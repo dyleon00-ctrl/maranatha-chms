@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import ReactDOM from 'react-dom/client';
 import { 
   Users, Shield, Landmark, UserCheck, CheckCircle2, Clock, 
   XCircle, Search, Filter, Plus, ChevronRight, Sparkles, 
@@ -44,7 +45,6 @@ export default function App() {
   ]);
 
   useEffect(() => {
-    // Test Supabase connection on load
     async function checkSupabase() {
       try {
         const { data, error } = await supabase.from('members').select('*').limit(1);
@@ -337,3 +337,10 @@ export default function App() {
     </div>
   );
 }
+
+// THIS LINE IS WHAT RENDERS THE APP ON THE SCREEN:
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
