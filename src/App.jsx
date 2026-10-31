@@ -1,6 +1,4 @@
 import React, { useState, useMemo, useEffect } from 'react';
-// ... existing code ...
-import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Users, Shield, Landmark, UserCheck, CheckCircle2, Clock, 
   XCircle, Search, Filter, Plus, ChevronRight, Sparkles, 
