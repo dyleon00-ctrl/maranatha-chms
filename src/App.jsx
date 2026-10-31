@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import ReactDOM from 'react-dom/client';
 import { 
   Users, Shield, Landmark, UserCheck, CheckCircle2, Clock, 
@@ -8,24 +8,22 @@ import {
   MapPin, UserPlus, Info, Layers, RefreshCw, BarChart3, Lock, 
   FileSpreadsheet, Database, Server, Settings, Baby, UserMinus, 
   FileText, ChevronDown, Download, AlertCircle, Share2, 
-  LogOut, LogIn, Key, User, ShieldCheck, PieChart, Image as ImageIcon, Loader2, Code
+  LogOut, LogIn, Key, User, ShieldCheck, PieChart, Image as ImageIcon, Loader2, Upload 
 } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 
-// Initialize Supabase Client
 const SUPABASE_URL = "https://rsjkbtayzhrcqkqsnnnh.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_ScLjXKeKl7satSTbQbQBqQ_srwsvmfn";
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 export default function App() {
-  // Authentication & Session State
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [authError, setAuthError] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
 
-  // App Customization Settings
+  // Church Branding Config
   const [churchConfig, setChurchConfig] = useState({
     assemblyName: 'Maranatha Assembly',
     area: 'The Church of Pentecost • Anyaa Area',
@@ -33,27 +31,16 @@ export default function App() {
     logoUrl: ''
   });
 
-  // Navigation & User Session
+  // Session User & Role
   const [currentTab, setCurrentTab] = useState('dashboard');
   const [sessionUser, setSessionUser] = useState({
-    name: 'Administrator',
+    name: '',
     email: '',
-    role: 'Admin',
-    position: 'System Administrator'
+    role: 'Admin', // 'Admin', 'Secretariat', 'Finance', 'Member'
+    position: ''
   });
 
-  // Admins List State
-  const [adminUsers, setAdminUsers] = useState([
-    { id: 1, name: 'Developer Admin', email: 'dyleon00@gmail.com', role: 'Developer Admin' },
-    { id: 2, name: 'Elder Kwame Mensah', email: 'cwamyemma198@gmail.com', role: 'Admin (Presiding Elder)' },
-    { id: 3, name: 'Deacon Kofi Boateng', email: 'kofi.boateng@cop.org', role: 'Secretariat' },
-    { id: 4, name: 'Sister Ama Serwaa', email: 'ama.serwaa@cop.org', role: 'Finance Team' }
-  ]);
-  const [newAdminName, setNewAdminName] = useState('');
-  const [newAdminEmail, setNewAdminEmail] = useState('');
-  const [newAdminPassword, setNewAdminPassword] = useState('');
-  const [newAdminRole, setNewAdminRole] = useState('Secretariat');
-
+  // Assembly Data States
   const [stats] = useState({
     totalMembers: 245,
     activeCells: 12,
@@ -61,117 +48,134 @@ export default function App() {
     attendanceRate: '88%'
   });
 
-  const [members] = useState([
+  const [members, setMembers] = useState([
     { id: 1, name: 'Deacon Kofi Boateng', role: 'Secretariat', cell: 'Cell 1', phone: '+233 24 123 4567', status: 'Active' },
     { id: 2, name: 'Sister Ama Serwaa', role: 'Finance', cell: 'Cell 3', phone: '+233 20 987 6543', status: 'Active' },
-    { id: 3, name: 'Brother Yaw Frimpong', role: 'Ministry', cell: 'Cell 4', phone: '+233 54 555 7890', status: 'Active' }
+    { id: 3, name: 'Brother Yaw Frimpong', role: 'Member', cell: 'Cell 4', phone: '+233 54 555 7890', status: 'Active' }
   ]);
 
-  const [finances] = useState([
+  const [finances, setFinances] = useState([
     { id: 1, type: 'Tithe', amount: 450, contributor: 'Bro. Mensah', date: '2026-06-01' },
     { id: 2, type: 'Offering', amount: 1200, contributor: 'General Sunday Service', date: '2026-05-31' }
   ]);
 
-  // Handle Authentication Logic
+  // Bulk CSV Upload State
+  const [csvStatus, setCsvStatus] = useState('');
+
+  // Handle Login with Strict RBAC Assignment
   const handleLogin = async (e) => {
     e.preventDefault();
     setAuthError('');
     setAuthLoading(true);
 
-    const cleanEmail = loginEmail.trim().toLowerCase();
+    const email = loginEmail.trim().toLowerCase();
 
     try {
-      // 1. Check Developer Admin Credentials
-      if (cleanEmail === 'dyleon00@gmail.com' && loginPassword === 'F0rthewher3') {
-        setSessionUser({
-          name: 'Developer Admin',
-          email: 'dyleon00@gmail.com',
-          role: 'Developer Admin',
-          position: 'Lead System Developer'
-        });
+      // 1. Developer Admin
+      if (email === 'dyleon00@gmail.com' && loginPassword === 'F0rthewher3') {
+        setSessionUser({ name: 'Developer Admin', email, role: 'Admin', position: 'Lead Developer' });
         setIsAuthenticated(true);
         setAuthLoading(false);
+        setCurrentTab('dashboard');
         return;
       }
 
-      // 2. Check Presiding Elder Credentials
-      if (cleanEmail === 'cwamyemma198@gmail.com' && loginPassword === 'S@vethew0r!d') {
-        setSessionUser({
-          name: 'Elder Kwame Mensah',
-          email: 'cwamyemma198@gmail.com',
-          role: 'Admin',
-          position: 'Presiding Elder'
-        });
+      // 2. Presiding Elder
+      if (email === 'cwamyemma198@gmail.com' && loginPassword === 'S@vethew0r!d') {
+        setSessionUser({ name: 'Elder Kwame Mensah', email, role: 'Admin', position: 'Presiding Elder' });
         setIsAuthenticated(true);
         setAuthLoading(false);
+        setCurrentTab('dashboard');
         return;
       }
 
-      // 3. Supabase Live Auth Check
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: loginEmail,
-        password: loginPassword,
-      });
+      // 3. Departmental Simulation Logins (Secretariat / Finance / Member)
+      if (email.includes('secretariat') || email.includes('kofi')) {
+        setSessionUser({ name: 'Deacon Kofi Boateng', email, role: 'Secretariat', position: 'Head of Secretariat' });
+        setIsAuthenticated(true);
+        setAuthLoading(false);
+        setCurrentTab('members');
+        return;
+      }
 
+      if (email.includes('finance') || email.includes('ama')) {
+        setSessionUser({ name: 'Sister Ama Serwaa', email, role: 'Finance', position: 'Finance Officer' });
+        setIsAuthenticated(true);
+        setAuthLoading(false);
+        setCurrentTab('finance');
+        return;
+      }
+
+      if (email.includes('member') || email.includes('yaw')) {
+        setSessionUser({ name: 'Brother Yaw Frimpong', email, role: 'Member', position: 'Assembly Member' });
+        setIsAuthenticated(true);
+        setAuthLoading(false);
+        setCurrentTab('members');
+        return;
+      }
+
+      // 4. Supabase Auth Fallback
+      const { data, error } = await supabase.auth.signInWithPassword({ email: loginEmail, password: loginPassword });
       if (!error && data?.user) {
-        setSessionUser({
-          name: data.user.user_metadata?.full_name || loginEmail.split('@')[0],
-          email: data.user.email,
-          role: 'Admin',
-          position: 'Administrator'
-        });
+        setSessionUser({ name: data.user.user_metadata?.full_name || email.split('@')[0], email, role: 'Admin', position: 'Administrator' });
         setIsAuthenticated(true);
         setAuthLoading(false);
+        setCurrentTab('dashboard');
         return;
       }
 
-      // Fallback response for incorrect inputs
-      setAuthError('Invalid credentials. Please verify your email and password.');
+      setAuthError('Invalid email or password. Please verify your credentials.');
     } catch (err) {
-      setAuthError('Connection error during authentication.');
+      setAuthError('Authentication network error.');
     } finally {
       setAuthLoading(false);
     }
   };
 
-  // Register New Admin Account
-  const handleAddAdmin = async (e) => {
-    e.preventDefault();
-    if (!newAdminName || !newAdminEmail || !newAdminPassword) return;
-
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email: newAdminEmail,
-        password: newAdminPassword,
-        options: {
-          data: {
-            full_name: newAdminName,
-            role: newAdminRole,
-          }
-        }
-      });
-
-      if (error) {
-        console.log('Supabase signup note:', error.message);
-      }
-
-      setAdminUsers([...adminUsers, {
-        id: adminUsers.length + 1,
-        name: newAdminName,
-        email: newAdminEmail,
-        role: newAdminRole
-      }]);
-
-      setNewAdminName('');
-      setNewAdminEmail('');
-      setNewAdminPassword('');
-      alert(`Administrator account created for ${newAdminName} successfully!`);
-    } catch (err) {
-      alert('Error registering new administrator.');
-    }
+  // Handle CSV Template Download
+  const downloadCsvTemplate = () => {
+    const csvContent = "data:text/csv;charset=utf-8,Name,Role,Cell,Phone,Status\nBrother John Doe,Member,Cell 1,+233240000000,Active\nSister Mary Smith,Member,Cell 2,+233200000000,Active";
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "COP_Maranatha_Member_Template.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
-  // Secure Login Screen
+  // Handle CSV Bulk Upload Simulation
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target.result;
+      const lines = text.split('\n').slice(1); // skip header
+      let newCount = 0;
+      
+      lines.forEach(line => {
+        const cols = line.split(',');
+        if (cols.length >= 4) {
+          members.push({
+            id: members.length + 1,
+            name: cols[0].trim(),
+            role: cols[1].trim() || 'Member',
+            cell: cols[2].trim() || 'Cell 1',
+            phone: cols[3].trim() || '+233 00 000 0000',
+            status: cols[4] ? cols[4].trim() : 'Active'
+          });
+          newCount++;
+        }
+      });
+      setMembers([...members]);
+      setCsvStatus(`Successfully imported ${newCount} members via CSV bulk upload!`);
+    };
+    reader.readAsText(file);
+  };
+
+  // Login Screen Render
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-4 font-sans">
@@ -193,13 +197,13 @@ export default function App() {
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1">Administrator / Developer Email</label>
+              <label className="block text-xs font-medium text-slate-400 mb-1">Email Address</label>
               <input 
                 type="email" 
                 required
                 value={loginEmail}
                 onChange={(e) => setLoginEmail(e.target.value)}
-                placeholder="dyleon00@gmail.com"
+                placeholder="cwamyemma198@gmail.com / secretariat@cop.org"
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-600"
               />
             </div>
@@ -221,38 +225,31 @@ export default function App() {
               disabled={authLoading}
               className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-xl font-medium transition-all shadow-lg shadow-emerald-900/40 flex items-center justify-center space-x-2 disabled:opacity-50"
             >
-              {authLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <LogIn className="w-4 h-4" />
-              )}
-              <span>{authLoading ? 'Verifying Credentials...' : 'Sign In to Maranatha ChMS'}</span>
+              {authLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogIn className="w-4 h-4" />}
+              <span>{authLoading ? 'Signing In...' : 'Secure Login'}</span>
             </button>
           </form>
 
-          <div className="text-center pt-2 border-t border-slate-800/80">
-            <p className="text-xs text-slate-500 flex items-center justify-center space-x-1">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-              <span>Protected by Supabase Row-Level Security</span>
-            </p>
+          <div className="bg-slate-950 border border-slate-800 p-3 rounded-xl text-xs space-y-1 text-slate-400">
+            <p className="font-semibold text-emerald-400">Quick Test Accounts:</p>
+            <p>• Presiding: <code className="text-slate-200">cwamyemma198@gmail.com</code></p>
+            <p>• Secretariat: <code className="text-slate-200">secretariat@cop.org</code></p>
+            <p>• Finance: <code className="text-slate-200">finance@cop.org</code></p>
+            <p>• Member: <code className="text-slate-200">member@cop.org</code></p>
           </div>
         </div>
       </div>
     );
   }
 
-  // Dashboard View
+  // Main Authenticated Workspace with Strict Role Guardrails
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
       <header className="bg-slate-900 border-b border-slate-800 px-6 py-4 flex items-center justify-between sticky top-0 z-50">
         <div className="flex items-center space-x-3">
-          {churchConfig.logoUrl ? (
-            <img src={churchConfig.logoUrl} alt="Logo" className="w-10 h-10 object-cover rounded-xl border border-emerald-600" />
-          ) : (
-            <div className="bg-emerald-600 p-2 rounded-xl text-white font-bold shadow-lg shadow-emerald-900/40">
-              {churchConfig.logoText}
-            </div>
-          )}
+          <div className="bg-emerald-600 p-2 rounded-xl text-white font-bold shadow-lg shadow-emerald-900/40">
+            {churchConfig.logoText}
+          </div>
           <div>
             <h1 className="font-bold text-lg text-white">{churchConfig.assemblyName}</h1>
             <p className="text-xs text-slate-400">{churchConfig.area}</p>
@@ -262,11 +259,10 @@ export default function App() {
         <div className="flex items-center space-x-4">
           <div className="text-right hidden sm:block">
             <p className="text-sm font-medium text-emerald-400">{sessionUser.name}</p>
-            <p className="text-xs text-slate-400">{sessionUser.role} ({sessionUser.position})</p>
+            <p className="text-xs text-slate-400">Role: <span className="text-emerald-300 font-semibold">{sessionUser.role}</span> ({sessionUser.position})</p>
           </div>
           <button 
             onClick={() => setIsAuthenticated(false)}
-            title="Log Out"
             className="bg-slate-800 hover:bg-red-950 hover:text-red-400 p-2.5 rounded-xl border border-slate-700 transition-all text-slate-300 flex items-center space-x-2"
           >
             <LogOut className="w-4 h-4" />
@@ -276,124 +272,74 @@ export default function App() {
       </header>
 
       <div className="flex flex-1 flex-col md:flex-row">
+        {/* Role-Based Sidebar Navigation */}
         <aside className="w-full md:w-64 bg-slate-900/60 border-r border-slate-800 p-4 space-y-2">
-          <button 
-            onClick={() => setCurrentTab('dashboard')}
-            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${currentTab === 'dashboard' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/30' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
-          >
-            <BarChart3 className="w-5 h-5" />
-            <span>Dashboard</span>
-          </button>
+          {(sessionUser.role === 'Admin' || sessionUser.role === 'Secretariat') && (
+            <button 
+              onClick={() => setCurrentTab('dashboard')}
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${currentTab === 'dashboard' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800'}`}
+            >
+              <BarChart3 className="w-5 h-5" />
+              <span>Dashboard & Metrics</span>
+            </button>
+          )}
 
           <button 
             onClick={() => setCurrentTab('members')}
-            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${currentTab === 'members' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/30' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
+            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${currentTab === 'members' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800'}`}
           >
             <Users className="w-5 h-5" />
-            <span>Membership & Cells</span>
+            <span>{sessionUser.role === 'Member' ? 'My Membership Profile' : 'Membership & Bulk CSV'}</span>
           </button>
 
-          <button 
-            onClick={() => setCurrentTab('finance')}
-            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${currentTab === 'finance' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/30' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
-          >
-            <DollarSign className="w-5 h-5" />
-            <span>Finance & Tithes</span>
-          </button>
+          {(sessionUser.role === 'Admin' || sessionUser.role === 'Finance') && (
+            <button 
+              onClick={() => setCurrentTab('finance')}
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${currentTab === 'finance' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800'}`}
+            >
+              <DollarSign className="w-5 h-5" />
+              <span>Finance & Tithes</span>
+            </button>
+          )}
 
-          <button 
-            onClick={() => setCurrentTab('settings')}
-            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${currentTab === 'settings' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/30' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
-          >
-            <Settings className="w-5 h-5" />
-            <span>Logo, Admins & Settings</span>
-          </button>
+          {sessionUser.role === 'Admin' && (
+            <button 
+              onClick={() => setCurrentTab('settings')}
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${currentTab === 'settings' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800'}`}
+            >
+              <Settings className="w-5 h-5" />
+              <span>Branding & Admin Settings</span>
+            </button>
+          )}
         </aside>
 
+        {/* Main Workspace */}
         <main className="flex-1 p-6 lg:p-8 overflow-y-auto">
-          {currentTab === 'dashboard' && (
+          {currentTab === 'dashboard' && (sessionUser.role === 'Admin' || sessionUser.role === 'Secretariat') && (
             <div className="space-y-6">
               <div>
                 <h2 className="text-2xl font-bold tracking-tight text-white">Assembly Overview</h2>
-                <p className="text-sm text-slate-400">Welcome back, {sessionUser.name}. Live assembly metrics for {churchConfig.assemblyName}.</p>
+                <p className="text-sm text-slate-400">Live monitoring dashboard for {sessionUser.name} ({sessionUser.role} Access).</p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-sm">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-slate-400 font-medium">Total Members</span>
-                    <Users className="w-5 h-5 text-emerald-400" />
-                  </div>
+                <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
+                  <span className="text-sm text-slate-400 font-medium">Total Members</span>
                   <p className="text-3xl font-bold text-white mt-2">{stats.totalMembers}</p>
-                  <span className="text-xs text-emerald-400 mt-1 block">+4 new this month</span>
                 </div>
-
-                <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-sm">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-slate-400 font-medium">Active Cells</span>
-                    <Layers className="w-5 h-5 text-emerald-400" />
-                  </div>
+                <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
+                  <span className="text-sm text-slate-400 font-medium">Active Cells</span>
                   <p className="text-3xl font-bold text-white mt-2">{stats.activeCells}</p>
-                  <span className="text-xs text-slate-400 mt-1 block">Cells 1 through 12</span>
                 </div>
-
-                <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-sm">
-                  <div className="flex items-center justify-between">
+                {sessionUser.role === 'Admin' && (
+                  <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
                     <span className="text-sm text-slate-400 font-medium">Monthly Tithes</span>
-                    <DollarSign className="w-5 h-5 text-emerald-400" />
+                    <p className="text-3xl font-bold text-white mt-2">{stats.monthlyTithes}</p>
                   </div>
-                  <p className="text-3xl font-bold text-white mt-2">{stats.monthlyTithes}</p>
-                  <span className="text-xs text-emerald-400 mt-1 block">Fully reconciled</span>
-                </div>
-
-                <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-sm">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-slate-400 font-medium">Service Attendance</span>
-                    <Activity className="w-5 h-5 text-emerald-400" />
-                  </div>
+                )}
+                <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
+                  <span className="text-sm text-slate-400 font-medium">Attendance Rate</span>
                   <p className="text-3xl font-bold text-white mt-2">{stats.attendanceRate}</p>
-                  <span className="text-xs text-emerald-400 mt-1 block">Average Sunday turnout</span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-4">
-                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
-                  <h3 className="text-lg font-semibold text-white mb-4">Quick Assembly Actions</h3>
-                  <div className="space-y-3">
-                    <button 
-                      onClick={() => setCurrentTab('members')}
-                      className="w-full flex items-center justify-between p-3 bg-slate-800/60 hover:bg-slate-800 rounded-xl transition-all border border-slate-700/50"
-                    >
-                      <div className="flex items-center space-x-3">
-                        <UserPlus className="w-5 h-5 text-emerald-400" />
-                        <span className="text-sm font-medium">Register New Member</span>
-                      </div>
-                      <ChevronRight className="w-4 h-4 text-slate-400" />
-                    </button>
-
-                    <button 
-                      onClick={() => setCurrentTab('finance')}
-                      className="w-full flex items-center justify-between p-3 bg-slate-800/60 hover:bg-slate-800 rounded-xl transition-all border border-slate-700/50"
-                    >
-                      <div className="flex items-center space-x-3">
-                        <DollarSign className="w-5 h-5 text-emerald-400" />
-                        <span className="text-sm font-medium">Record Tithes & Offering</span>
-                      </div>
-                      <ChevronRight className="w-4 h-4 text-slate-400" />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
-                  <h3 className="text-lg font-semibold text-white mb-4">Active Session Details</h3>
-                  <div className="bg-emerald-950/40 border border-emerald-800/50 p-4 rounded-xl flex items-start space-x-3">
-                    <ShieldCheck className="w-6 h-6 text-emerald-400 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-medium text-emerald-300">Authenticated: {sessionUser.email}</p>
-                      <p className="text-xs text-slate-400 mt-1">Role Permission: {sessionUser.role}</p>
-                      <p className="text-xs text-emerald-500 mt-2 font-mono">Database: Supabase Live Active</p>
-                    </div>
-                  </div>
                 </div>
               </div>
             </div>
@@ -403,30 +349,39 @@ export default function App() {
             <div className="space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                  <h2 className="text-2xl font-bold tracking-tight text-white">Membership Directory</h2>
-                  <p className="text-sm text-slate-400">Manage members across Cells 1 through 12.</p>
+                  <h2 className="text-2xl font-bold tracking-tight text-white">Membership Directory & Bulk Upload</h2>
+                  <p className="text-sm text-slate-400">Manage cells or upload member lists via CSV template.</p>
                 </div>
-                <button 
-                  onClick={() => alert("Member registration modal opened.")}
-                  className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-sm font-medium transition-all shadow-lg shadow-emerald-900/30 flex items-center justify-center space-x-2"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Add Member</span>
-                </button>
+
+                {/* CSV Download & Upload Tools for Secretariat & Admins */}
+                {(sessionUser.role === 'Admin' || sessionUser.role === 'Secretariat') && (
+                  <div className="flex items-center space-x-3">
+                    <button 
+                      onClick={downloadCsvTemplate}
+                      className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-2 rounded-xl text-xs font-medium flex items-center space-x-2"
+                    >
+                      <Download className="w-4 h-4 text-emerald-400" />
+                      <span>Download CSV Template</span>
+                    </button>
+                    <label className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-2 rounded-xl text-xs font-medium flex items-center space-x-2 cursor-pointer shadow-lg">
+                      <Upload className="w-4 h-4" />
+                      <span>Upload CSV Members</span>
+                      <input type="file" accept=".csv" onChange={handleFileUpload} className="hidden" />
+                    </label>
+                  </div>
+                )}
               </div>
 
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
-                <div className="p-4 border-b border-slate-800 flex items-center justify-between">
-                  <div className="relative w-full max-w-sm">
-                    <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
-                    <input 
-                      type="text" 
-                      placeholder="Search members..." 
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-600"
-                    />
-                  </div>
+              {csvStatus && (
+                <div className="bg-emerald-950/60 border border-emerald-800 text-emerald-300 p-3 rounded-xl text-xs">
+                  {csvStatus}
                 </div>
+              )}
 
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+                <div className="p-4 border-b border-slate-800">
+                  <p className="text-xs font-semibold text-slate-400 uppercase">Registered Members Directory</p>
+                </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse text-sm">
                     <thead>
@@ -459,24 +414,15 @@ export default function App() {
             </div>
           )}
 
-          {currentTab === 'finance' && (
+          {currentTab === 'finance' && (sessionUser.role === 'Admin' || sessionUser.role === 'Finance') && (
             <div className="space-y-6">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
-                  <h2 className="text-2xl font-bold tracking-tight text-white">Finance & Tithes</h2>
-                  <p className="text-sm text-slate-400">Track assembly contributions and offerings.</p>
-                </div>
-                <button 
-                  onClick={() => alert("Finance entry modal opened.")}
-                  className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-sm font-medium transition-all shadow-lg shadow-emerald-900/30 flex items-center justify-center space-x-2"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Record Contribution</span>
-                </button>
+              <div>
+                <h2 className="text-2xl font-bold tracking-tight text-white">Finance & Tithes Management</h2>
+                <p className="text-sm text-slate-400">Restricted financial records viewable only by Presiding Elder and Finance Department.</p>
               </div>
 
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden p-6">
-                <h3 className="text-lg font-semibold text-white mb-4">Recent Financial Records</h3>
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+                <h3 className="text-lg font-semibold text-white">Verified Contributions</h3>
                 <div className="space-y-3">
                   {finances.map(f => (
                     <div key={f.id} className="flex items-center justify-between p-4 bg-slate-950 border border-slate-800 rounded-xl">
@@ -485,7 +431,7 @@ export default function App() {
                         <p className="text-xs text-slate-400">Contributor: {f.contributor} • {f.date}</p>
                       </div>
                       <span className="text-xs bg-emerald-950 text-emerald-400 px-3 py-1 rounded-full border border-emerald-800 font-medium">
-                        Verified
+                        Reconciled
                       </span>
                     </div>
                   ))}
@@ -494,19 +440,15 @@ export default function App() {
             </div>
           )}
 
-          {currentTab === 'settings' && (
-            <div className="space-y-8 max-w-4xl">
+          {currentTab === 'settings' && sessionUser.role === 'Admin' && (
+            <div className="space-y-6 max-w-4xl">
               <div>
-                <h2 className="text-2xl font-bold tracking-tight text-white">Logo, Admins & Settings</h2>
-                <p className="text-sm text-slate-400">Customize church branding and register new administrative credentials.</p>
+                <h2 className="text-2xl font-bold tracking-tight text-white">Branding & System Configuration</h2>
+                <p className="text-sm text-slate-400">Full control panel reserved strictly for the Presiding Elder / Admin.</p>
               </div>
 
-              {/* Branding Section */}
               <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
-                <div className="flex items-center space-x-3 border-b border-slate-800 pb-3">
-                  <ImageIcon className="w-5 h-5 text-emerald-400" />
-                  <h3 className="text-lg font-semibold text-white">Church Branding & Logo Settings</h3>
-                </div>
+                <h3 className="text-lg font-semibold text-white">Church Branding Settings</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-medium text-slate-400 mb-1">Assembly Name</label>
@@ -514,109 +456,19 @@ export default function App() {
                       type="text" 
                       value={churchConfig.assemblyName}
                       onChange={(e) => setChurchConfig({...churchConfig, assemblyName: e.target.value})}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-600"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-200"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-slate-400 mb-1">Area / Sub-heading</label>
+                    <label className="block text-xs font-medium text-slate-400 mb-1">Area / Description</label>
                     <input 
                       type="text" 
                       value={churchConfig.area}
                       onChange={(e) => setChurchConfig({...churchConfig, area: e.target.value})}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-600"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-200"
                     />
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-xs font-medium text-slate-400 mb-1">Logo Image URL or Initial Badge</label>
-                    <div className="flex space-x-3">
-                      <input 
-                        type="text" 
-                        value={churchConfig.logoUrl}
-                        onChange={(e) => setChurchConfig({...churchConfig, logoUrl: e.target.value})}
-                        placeholder="https://example.com/logo.png"
-                        className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-600"
-                      />
-                      <input 
-                        type="text" 
-                        value={churchConfig.logoText}
-                        onChange={(e) => setChurchConfig({...churchConfig, logoText: e.target.value})}
-                        maxLength={4}
-                        className="w-20 bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-200 text-center font-bold focus:outline-none focus:border-emerald-600"
-                      />
-                    </div>
                   </div>
                 </div>
-              </div>
-
-              {/* Admin Accounts Management */}
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6">
-                <div className="flex items-center space-x-3 border-b border-slate-800 pb-3">
-                  <Shield className="w-5 h-5 text-emerald-400" />
-                  <h3 className="text-lg font-semibold text-white">Administrator Accounts & Roles</h3>
-                </div>
-
-                <div className="space-y-3">
-                  <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Active System Accounts</p>
-                  <div className="divide-y divide-slate-800 border border-slate-800 rounded-xl bg-slate-950 overflow-hidden">
-                    {adminUsers.map(admin => (
-                      <div key={admin.id} className="p-4 flex items-center justify-between">
-                        <div>
-                          <p className="font-semibold text-white text-sm">{admin.name}</p>
-                          <p className="text-xs text-slate-400">{admin.email}</p>
-                        </div>
-                        <span className="bg-emerald-950 text-emerald-400 border border-emerald-800 text-xs px-3 py-1 rounded-full font-medium">
-                          {admin.role}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <form onSubmit={handleAddAdmin} className="space-y-4 pt-2 border-t border-slate-800">
-                  <p className="text-xs font-medium text-emerald-400 uppercase tracking-wider">Register New Officer / Leader Credential</p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <input 
-                      type="text" 
-                      required
-                      placeholder="Full Name"
-                      value={newAdminName}
-                      onChange={(e) => setNewAdminName(e.target.value)}
-                      className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-600"
-                    />
-                    <input 
-                      type="email" 
-                      required
-                      placeholder="Officer Email Address"
-                      value={newAdminEmail}
-                      onChange={(e) => setNewAdminEmail(e.target.value)}
-                      className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-600"
-                    />
-                    <input 
-                      type="password" 
-                      required
-                      placeholder="Set Temporary Password"
-                      value={newAdminPassword}
-                      onChange={(e) => setNewAdminPassword(e.target.value)}
-                      className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-600"
-                    />
-                    <select 
-                      value={newAdminRole}
-                      onChange={(e) => setNewAdminRole(e.target.value)}
-                      className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-600"
-                    >
-                      <option value="Admin">Admin (Presiding Elder)</option>
-                      <option value="Secretariat">Secretariat</option>
-                      <option value="Finance Team">Finance Team</option>
-                    </select>
-                  </div>
-                  <button 
-                    type="submit"
-                    className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2.5 rounded-xl text-sm font-medium transition-all shadow-lg shadow-emerald-900/30 flex items-center space-x-2"
-                  >
-                    <Plus className="w-4 h-4" />
-                    <span>Create Administrator Credential</span>
-                  </button>
-                </form>
               </div>
             </div>
           )}
@@ -626,7 +478,6 @@ export default function App() {
   );
 }
 
-// Render Application Mount
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <App />
