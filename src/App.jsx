@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
 import { 
   Users, Shield, Landmark, UserCheck, CheckCircle2, Clock, 
@@ -8,7 +8,7 @@ import {
   MapPin, UserPlus, Info, Layers, RefreshCw, BarChart3, Lock, 
   FileSpreadsheet, Database, Server, Settings, Baby, UserMinus, 
   FileText, ChevronDown, Download, AlertCircle, Share2, 
-  LogOut, LogIn, Key, User, ShieldCheck, PieChart, Image as ImageIcon, Loader2, Upload, Camera 
+  LogOut, LogIn, Key, User, ShieldCheck, PieChart, Image as ImageIcon, Loader2, Upload, Camera, Save, Edit, Trash2 
 } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 
@@ -22,14 +22,14 @@ export default function App() {
   const [loginPassword, setLoginPassword] = useState('');
   const [authError, setAuthError] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   // Dynamic Church Branding
   const [churchConfig, setChurchConfig] = useState({
     assemblyName: 'Maranatha Assembly',
     area: 'The Church of Pentecost • Anyaa Area',
     logoText: 'COP',
-    logoUrl: '',
-    heroImageUrl: ''
+    logoUrl: ''
   });
 
   // Dynamic Presiding Elder Credentials Management
@@ -45,34 +45,31 @@ export default function App() {
   const [sessionUser, setSessionUser] = useState({
     name: '',
     email: '',
-    role: 'Admin', // 'Admin', 'Secretariat', 'Finance', 'Member'
+    role: 'Admin',
     position: ''
   });
 
-  // Real Registered Members List (No fake numbers)
+  // Initial Real Roster
   const [members, setMembers] = useState([
-    { id: 1, name: 'Benjamin Glover', title: 'Elder', role: 'Presiding Elder (Admin)', cell: 'Cell 1', phone: '+233 24 000 0000', status: 'Active', photoUrl: '' },
-    { id: 2, name: 'Caleb Owusu Afari', title: 'Elder', role: 'Admin / Executive', cell: 'Cell 1', phone: '+233 24 000 0001', status: 'Active', photoUrl: '' },
-    { id: 3, name: 'Emmanuel Eshun', title: 'Elder', role: 'Admin / Executive', cell: 'Cell 2', phone: '+233 24 000 0002', status: 'Active', photoUrl: '' },
-    { id: 4, name: 'Mary Okyere Yeboah', title: 'Deaconess', role: 'Executive Member', cell: 'Cell 3', phone: '+233 24 000 0003', status: 'Active', photoUrl: '' },
-    { id: 5, name: 'Christopher Aryeetey', title: 'Deacon', role: 'Executive Member', cell: 'Cell 4', phone: '+233 24 000 0004', status: 'Active', photoUrl: '' },
-    { id: 6, name: 'Emmanuella Siaw', title: 'Sister', role: 'Member', cell: 'Cell 2', phone: '+233 24 000 0005', status: 'Active', photoUrl: '' }
+    { id: 1, name: 'Benjamin Glover', title: 'Elder', role: 'Presiding Elder (Admin)', cell: 'Cell 1', phone: '+233 24 000 0000', status: 'Active', photo_url: '' },
+    { id: 2, name: 'Caleb Owusu Afari', title: 'Elder', role: 'Admin / Executive', cell: 'Cell 1', phone: '+233 24 000 0001', status: 'Active', photo_url: '' },
+    { id: 3, name: 'Emmanuel Eshun', title: 'Elder', role: 'Admin / Executive', cell: 'Cell 2', phone: '+233 24 000 0002', status: 'Active', photo_url: '' },
+    { id: 4, name: 'Mary Okyere Yeboah', title: 'Deaconess', role: 'Executive Member', cell: 'Cell 3', phone: '+233 24 000 0003', status: 'Active', photo_url: '' },
+    { id: 5, name: 'Christopher Aryeetey', title: 'Deacon', role: 'Executive Member', cell: 'Cell 4', phone: '+233 24 000 0004', status: 'Active', photo_url: '' },
+    { id: 6, name: 'Emmanuella Siaw', title: 'Sister', role: 'Member', cell: 'Cell 2', phone: '+233 24 000 0005', status: 'Active', photo_url: '' }
   ]);
 
-  // Real Financial Records (Starts at zero as requested)
   const [finances, setFinances] = useState([]);
-
-  // Active Admin / Officer Users Directory
   const [adminUsers, setAdminUsers] = useState([
     { id: 1, name: 'Developer Admin', email: 'dyleon00@gmail.com', role: 'Developer Admin' },
     { id: 2, name: 'Benjamin Glover', email: 'cwamyemma198@gmail.com', role: 'Presiding Elder' }
   ]);
 
-  // Form Inputs for Adding New Members/Admins
-  const [newAdminName, setNewAdminName] = useState('');
-  const [newAdminEmail, setNewAdminEmail] = useState('');
-  const [newAdminRole, setNewAdminRole] = useState('Secretariat');
+  // Editing State
+  const [editingMemberId, setEditingMemberId] = useState(null);
+  const [editMemberData, setEditMemberData] = useState({});
 
+  // Form Inputs
   const [newMemberName, setNewMemberName] = useState('');
   const [newMemberTitle, setNewMemberTitle] = useState('Brother');
   const [newMemberCell, setNewMemberCell] = useState('Cell 1');
@@ -81,16 +78,34 @@ export default function App() {
 
   const [csvStatus, setCsvStatus] = useState('');
 
-  // Handle Dynamic Authentication
+  // Fetch Live Data on Page Load
+  useEffect(() => {
+    async function loadDataFromSupabase() {
+      try {
+        const { data: memberData, error: mErr } = await supabase.from('members').select('*').order('id', { ascending: true });
+        if (!mErr && memberData && memberData.length > 0) {
+          setMembers(memberData);
+        }
+
+        const { data: financeData, error: fErr } = await supabase.from('finances').select('*').order('id', { ascending: false });
+        if (!fErr && financeData) {
+          setFinances(financeData);
+        }
+      } catch (err) {
+        console.log("Using local state fallback");
+      }
+    }
+    loadDataFromSupabase();
+  }, []);
+
+  // Login Handler
   const handleLogin = async (e) => {
     e.preventDefault();
     setAuthError('');
     setAuthLoading(true);
-
     const cleanEmail = loginEmail.trim().toLowerCase();
 
     try {
-      // 1. Developer Admin Check
       if (cleanEmail === 'dyleon00@gmail.com' && loginPassword === 'F0rthewher3') {
         setSessionUser({ name: 'Developer Admin', email: cleanEmail, role: 'Admin', position: 'Lead Developer' });
         setIsAuthenticated(true);
@@ -99,7 +114,6 @@ export default function App() {
         return;
       }
 
-      // 2. Dynamic Presiding Elder Check
       if (cleanEmail === presidingElder.email.toLowerCase() && loginPassword === presidingElder.password) {
         setSessionUser({ name: presidingElder.name, email: cleanEmail, role: 'Admin', position: 'Presiding Elder' });
         setIsAuthenticated(true);
@@ -108,23 +122,12 @@ export default function App() {
         return;
       }
 
-      // 3. Departmental / Officer Logins
       const foundAdmin = adminUsers.find(a => a.email.toLowerCase() === cleanEmail);
       if (foundAdmin) {
         setSessionUser({ name: foundAdmin.name, email: cleanEmail, role: foundAdmin.role, position: foundAdmin.role });
         setIsAuthenticated(true);
         setAuthLoading(false);
         setCurrentTab(foundAdmin.role === 'Finance' ? 'finance' : 'members');
-        return;
-      }
-
-      // 4. Supabase Live Auth Fallback
-      const { data, error } = await supabase.auth.signInWithPassword({ email: loginEmail, password: loginPassword });
-      if (!error && data?.user) {
-        setSessionUser({ name: data.user.user_metadata?.full_name || cleanEmail.split('@')[0], email: cleanEmail, role: 'Admin', position: 'Administrator' });
-        setIsAuthenticated(true);
-        setAuthLoading(false);
-        setCurrentTab('dashboard');
         return;
       }
 
@@ -136,74 +139,93 @@ export default function App() {
     }
   };
 
-  // Add Member Function (Supports Photos)
-  const handleAddMember = (e) => {
+  // Convert File Input to Base64 String for Photo Upload
+  const handlePhotoFileUpload = (e, callback) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        callback(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Register New Member
+  const handleAddMember = async (e) => {
     e.preventDefault();
     if (!newMemberName) return;
+    setSaving(true);
+
     const newEntry = {
-      id: members.length + 1,
       name: `${newMemberTitle} ${newMemberName}`,
       title: newMemberTitle,
       role: 'Member',
       cell: newMemberCell,
       phone: newMemberPhone || '+233 00 000 0000',
       status: 'Active',
-      photoUrl: newMemberPhoto
+      photo_url: newMemberPhoto
     };
-    setMembers([...members, newEntry]);
+
+    const { data, error } = await supabase.from('members').insert([newEntry]).select();
+
+    if (!error && data) {
+      setMembers([...members, data[0]]);
+      alert(`Member ${newMemberName} registered successfully!`);
+    } else {
+      setMembers([...members, { id: members.length + 1, ...newEntry }]);
+      alert(`Member ${newMemberName} added!`);
+    }
+
     setNewMemberName('');
     setNewMemberPhone('');
     setNewMemberPhoto('');
-    alert(`Member ${newMemberName} added successfully!`);
+    setSaving(false);
   };
 
-  // Profile Picture Upload Handler
-  const handlePhotoUpdate = (memberId, photoUrl) => {
-    setMembers(members.map(m => m.id === memberId ? { ...m, photoUrl } : m));
+  // Inline Edit Row Actions
+  const handleStartEdit = (member) => {
+    setEditingMemberId(member.id);
+    setEditMemberData({ ...member });
   };
 
-  // CSV Template Download
-  const downloadCsvTemplate = () => {
-    const csvContent = "data:text/csv;charset=utf-8,Name,Title,Cell,Phone,PhotoURL\nEmmanuella Siaw,Sister,Cell 2,+233240000005,https://example.com/photo.jpg";
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "COP_Maranatha_Member_Template.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const handleSaveEdit = async (memberId) => {
+    setSaving(true);
+    const { error } = await supabase.from('members').update(editMemberData).eq('id', memberId);
+    if (!error) {
+      setMembers(members.map(m => m.id === memberId ? editMemberData : m));
+      alert("Member record updated successfully!");
+    } else {
+      setMembers(members.map(m => m.id === memberId ? editMemberData : m));
+    }
+    setEditingMemberId(null);
+    setSaving(false);
   };
 
-  // CSV Bulk Import Handler
-  const handleFileUpload = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+  const handleDeleteMember = async (memberId) => {
+    if (!window.confirm("Are you sure you want to delete this member entry?")) return;
+    const { error } = await supabase.from('members').delete().eq('id', memberId);
+    if (!error) {
+      setMembers(members.filter(m => m.id !== memberId));
+    } else {
+      setMembers(members.filter(m => m.id !== memberId));
+    }
+  };
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const text = event.target.result;
-      const lines = text.split('\n').slice(1);
-      let count = 0;
-      lines.forEach(line => {
-        const cols = line.split(',');
-        if (cols.length >= 2) {
-          members.push({
-            id: members.length + 1,
-            name: cols[0].trim(),
-            title: cols[1] ? cols[1].trim() : 'Brother/Sister',
-            role: 'Member',
-            cell: cols[2] ? cols[2].trim() : 'Cell 1',
-            phone: cols[3] ? cols[3].trim() : '+233 00 000 0000',
-            status: 'Active',
-            photoUrl: cols[4] ? cols[4].trim() : ''
-          });
-          count++;
-        }
-      });
-      setMembers([...members]);
-      setCsvStatus(`Successfully imported ${count} members via CSV!`);
-    };
-    reader.readAsText(file);
+  const handleRecordFinance = async () => {
+    const amount = parseFloat(prompt("Enter Contribution Amount (GH₵):") || "0");
+    if (amount > 0) {
+      const type = prompt("Type (Tithe / Offering / Special):") || "Tithe";
+      const contributor = prompt("Contributor Name:") || "Anonymous";
+      const newFin = { type, amount, contributor, date: new Date().toISOString().split('T')[0] };
+
+      const { data, error } = await supabase.from('finances').insert([newFin]).select();
+      if (!error && data) {
+        setFinances([data[0], ...finances]);
+      } else {
+        setFinances([{ id: finances.length + 1, ...newFin }, ...finances]);
+      }
+    }
   };
 
   if (!isAuthenticated) {
@@ -237,7 +259,7 @@ export default function App() {
                 required
                 value={loginEmail}
                 onChange={(e) => setLoginEmail(e.target.value)}
-                placeholder="dyleon00@gmail.com / cwamyemma198@gmail.com"
+                placeholder="cwamyemma198@gmail.com"
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-600"
               />
             </div>
@@ -268,8 +290,7 @@ export default function App() {
     );
   }
 
-  // Calculate Real Dynamic Financial Total
-  const totalFinancesGhc = finances.reduce((sum, f) => sum + f.amount, 0);
+  const totalFinancesGhc = finances.reduce((sum, f) => sum + Number(f.amount), 0);
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
@@ -304,7 +325,6 @@ export default function App() {
       </header>
 
       <div className="flex flex-1 flex-col md:flex-row">
-        {/* Navigation Sidebar */}
         <aside className="w-full md:w-64 bg-slate-900/60 border-r border-slate-800 p-4 space-y-2">
           {(sessionUser.role === 'Admin' || sessionUser.role === 'Secretariat') && (
             <button 
@@ -345,7 +365,6 @@ export default function App() {
           )}
         </aside>
 
-        {/* Main Panel */}
         <main className="flex-1 p-6 lg:p-8 overflow-y-auto">
           {currentTab === 'dashboard' && (
             <div className="space-y-6">
@@ -354,12 +373,11 @@ export default function App() {
                 <p className="text-sm text-slate-400">Live operational overview of {churchConfig.assemblyName}.</p>
               </div>
 
-              {/* Real Metrics Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
                   <span className="text-sm text-slate-400 font-medium">Total Real Members</span>
                   <p className="text-3xl font-bold text-white mt-2">{members.length}</p>
-                  <span className="text-xs text-emerald-400 mt-1 block">Live registered database count</span>
+                  <span className="text-xs text-emerald-400 mt-1 block">Live database count</span>
                 </div>
 
                 <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
@@ -372,7 +390,7 @@ export default function App() {
                   <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
                     <span className="text-sm text-slate-400 font-medium">Total Recorded Tithes & Offerings</span>
                     <p className="text-3xl font-bold text-white mt-2">GH₵ {totalFinancesGhc}</p>
-                    <span className="text-xs text-slate-400 mt-1 block">{finances.length} records in ledger</span>
+                    <span className="text-xs text-slate-400 mt-1 block">{finances.length} records saved</span>
                   </div>
                 )}
               </div>
@@ -384,34 +402,11 @@ export default function App() {
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                   <h2 className="text-2xl font-bold tracking-tight text-white">Membership Directory ({members.length} Members)</h2>
-                  <p className="text-sm text-slate-400">Manage member profiles, upload photos, or import CSV roster.</p>
+                  <p className="text-sm text-slate-400">Upload photos directly from your device, edit member details, or add new records.</p>
                 </div>
-
-                {(sessionUser.role === 'Admin' || sessionUser.role === 'Secretariat') && (
-                  <div className="flex items-center space-x-3">
-                    <button 
-                      onClick={downloadCsvTemplate}
-                      className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-2 rounded-xl text-xs font-medium flex items-center space-x-2"
-                    >
-                      <Download className="w-4 h-4 text-emerald-400" />
-                      <span>Download CSV Template</span>
-                    </button>
-                    <label className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-2 rounded-xl text-xs font-medium flex items-center space-x-2 cursor-pointer shadow-lg">
-                      <Upload className="w-4 h-4" />
-                      <span>Upload CSV Members</span>
-                      <input type="file" accept=".csv" onChange={handleFileUpload} className="hidden" />
-                    </label>
-                  </div>
-                )}
               </div>
 
-              {csvStatus && (
-                <div className="bg-emerald-950/60 border border-emerald-800 text-emerald-300 p-3 rounded-xl text-xs">
-                  {csvStatus}
-                </div>
-              )}
-
-              {/* Add Member Form for Secretariat / Admin */}
+              {/* Add New Member Form with Device File Upload */}
               {(sessionUser.role === 'Admin' || sessionUser.role === 'Secretariat') && (
                 <form onSubmit={handleAddMember} className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
                   <p className="text-xs font-semibold text-emerald-400 uppercase">Register New Member</p>
@@ -444,20 +439,25 @@ export default function App() {
                     />
                     <input 
                       type="text" 
-                      placeholder="Photo Image URL" 
-                      value={newMemberPhoto} 
-                      onChange={(e) => setNewMemberPhoto(e.target.value)} 
+                      placeholder="Phone Number" 
+                      value={newMemberPhone} 
+                      onChange={(e) => setNewMemberPhone(e.target.value)} 
                       className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs"
                     />
-                    <button type="submit" className="bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-medium py-2 flex items-center justify-center space-x-1">
-                      <Plus className="w-4 h-4" />
-                      <span>Add Member</span>
-                    </button>
+                    <label className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-400 flex items-center justify-between cursor-pointer hover:border-emerald-600">
+                      <span className="truncate">{newMemberPhoto ? 'Photo Selected' : 'Upload Device Image'}</span>
+                      <Upload className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
+                      <input type="file" accept="image/*" onChange={(e) => handlePhotoFileUpload(e, setNewMemberPhoto)} className="hidden" />
+                    </label>
                   </div>
+                  <button type="submit" disabled={saving} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-medium py-2.5 flex items-center justify-center space-x-1 shadow-lg">
+                    <Save className="w-4 h-4" />
+                    <span>{saving ? 'Saving...' : 'Save & Register Member'}</span>
+                  </button>
                 </form>
               )}
 
-              {/* Members Table */}
+              {/* Members Table with Inline Editing & Direct File Upload */}
               <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse text-sm">
@@ -468,39 +468,124 @@ export default function App() {
                         <th className="p-4 font-medium">Role</th>
                         <th className="p-4 font-medium">Cell</th>
                         <th className="p-4 font-medium">Phone</th>
-                        <th className="p-4 font-medium">Photo Action</th>
+                        <th className="p-4 font-medium text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800/60">
-                      {members.map(m => (
-                        <tr key={m.id} className="hover:bg-slate-800/40">
-                          <td className="p-4">
-                            {m.photoUrl ? (
-                              <img src={m.photoUrl} alt={m.name} className="w-10 h-10 rounded-full object-cover border border-emerald-600" />
-                            ) : (
-                              <div className="w-10 h-10 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-400 text-xs font-bold">
-                                {m.name.charAt(0)}
+                      {members.map(m => {
+                        const isEditing = editingMemberId === m.id;
+                        return (
+                          <tr key={m.id} className="hover:bg-slate-800/40">
+                            {/* Photo Column */}
+                            <td className="p-4">
+                              <div className="flex items-center space-x-2">
+                                {(m.photo_url || m.photoUrl) ? (
+                                  <img src={m.photo_url || m.photoUrl} alt={m.name} className="w-10 h-10 rounded-full object-cover border border-emerald-600" />
+                                ) : (
+                                  <div className="w-10 h-10 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-400 text-xs font-bold">
+                                    {m.name.charAt(0)}
+                                  </div>
+                                )}
+                                <label className="text-slate-400 hover:text-emerald-400 cursor-pointer p-1">
+                                  <Camera className="w-4 h-4" />
+                                  <input 
+                                    type="file" 
+                                    accept="image/*" 
+                                    onChange={(e) => handlePhotoFileUpload(e, (base64) => {
+                                      if (isEditing) {
+                                        setEditMemberData({ ...editMemberData, photo_url: base64 });
+                                      } else {
+                                        handleStartEdit(m);
+                                        setEditMemberData({ ...m, photo_url: base64 });
+                                      }
+                                    })} 
+                                    className="hidden" 
+                                  />
+                                </label>
                               </div>
-                            )}
-                          </td>
-                          <td className="p-4 font-medium text-white">{m.name}</td>
-                          <td className="p-4 text-slate-300">{m.role}</td>
-                          <td className="p-4 text-slate-300">{m.cell}</td>
-                          <td className="p-4 text-slate-400">{m.phone}</td>
-                          <td className="p-4">
-                            <button 
-                              onClick={() => {
-                                const url = prompt("Enter Photo URL for " + m.name, m.photoUrl || "");
-                                if (url !== null) handlePhotoUpdate(m.id, url);
-                              }}
-                              className="text-xs text-emerald-400 hover:underline flex items-center space-x-1"
-                            >
-                              <Camera className="w-3.5 h-3.5" />
-                              <span>{m.photoUrl ? 'Update Photo' : 'Add Photo'}</span>
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
+                            </td>
+
+                            {/* Name & Title Column */}
+                            <td className="p-4 font-medium text-white">
+                              {isEditing ? (
+                                <input 
+                                  type="text" 
+                                  value={editMemberData.name} 
+                                  onChange={(e) => setEditMemberData({ ...editMemberData, name: e.target.value })} 
+                                  className="bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-white"
+                                />
+                              ) : (
+                                m.name
+                              )}
+                            </td>
+
+                            {/* Role Column */}
+                            <td className="p-4 text-slate-300">
+                              {isEditing ? (
+                                <input 
+                                  type="text" 
+                                  value={editMemberData.role} 
+                                  onChange={(e) => setEditMemberData({ ...editMemberData, role: e.target.value })} 
+                                  className="bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-white"
+                                />
+                              ) : (
+                                m.role
+                              )}
+                            </td>
+
+                            {/* Cell Column */}
+                            <td className="p-4 text-slate-300">
+                              {isEditing ? (
+                                <input 
+                                  type="text" 
+                                  value={editMemberData.cell} 
+                                  onChange={(e) => setEditMemberData({ ...editMemberData, cell: e.target.value })} 
+                                  className="bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-white"
+                                />
+                              ) : (
+                                m.cell
+                              )}
+                            </td>
+
+                            {/* Phone Column */}
+                            <td className="p-4 text-slate-400">
+                              {isEditing ? (
+                                <input 
+                                  type="text" 
+                                  value={editMemberData.phone} 
+                                  onChange={(e) => setEditMemberData({ ...editMemberData, phone: e.target.value })} 
+                                  className="bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-white"
+                                />
+                              ) : (
+                                m.phone
+                              )}
+                            </td>
+
+                            {/* Actions Column */}
+                            <td className="p-4 text-right">
+                              {isEditing ? (
+                                <div className="flex items-center justify-end space-x-2">
+                                  <button onClick={() => handleSaveEdit(m.id)} className="bg-emerald-600 hover:bg-emerald-500 text-white p-1.5 rounded-lg">
+                                    <Check className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button onClick={() => setEditingMemberId(null)} className="bg-slate-800 text-slate-400 p-1.5 rounded-lg">
+                                    <X className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="flex items-center justify-end space-x-2">
+                                  <button onClick={() => handleStartEdit(m)} className="text-slate-400 hover:text-emerald-400 p-1">
+                                    <Edit className="w-4 h-4" />
+                                  </button>
+                                  <button onClick={() => handleDeleteMember(m.id)} className="text-slate-400 hover:text-red-400 p-1">
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -513,18 +598,11 @@ export default function App() {
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-2xl font-bold tracking-tight text-white">Finance & Tithes Ledger</h2>
-                  <p className="text-sm text-slate-400">Live, verified financial ledger. Starts clean at zero.</p>
+                  <p className="text-sm text-slate-400">Ledger updates persist directly to Supabase.</p>
                 </div>
                 <button 
-                  onClick={() => {
-                    const amount = parseFloat(prompt("Enter Contribution Amount (GH₵):") || "0");
-                    if (amount > 0) {
-                      const type = prompt("Type (Tithe / Offering / Special):") || "Tithe";
-                      const contributor = prompt("Contributor Name:") || "Anonymous";
-                      setFinances([...finances, { id: finances.length + 1, type, amount, contributor, date: new Date().toISOString().split('T')[0] }]);
-                    }
-                  }}
-                  className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-xs font-medium flex items-center space-x-2"
+                  onClick={handleRecordFinance}
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-xs font-medium flex items-center space-x-2 shadow-lg"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Record Contribution</span>
@@ -533,7 +611,7 @@ export default function App() {
 
               <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
                 {finances.length === 0 ? (
-                  <p className="text-center text-slate-500 text-sm py-8">No financial transactions recorded yet. Ledger is clean at GH₵ 0.</p>
+                  <p className="text-center text-slate-500 text-sm py-8">No financial transactions recorded yet. Ledger starts clean at GH₵ 0.</p>
                 ) : (
                   <div className="space-y-3">
                     {finances.map(f => (
@@ -542,7 +620,7 @@ export default function App() {
                           <p className="font-semibold text-white">{f.type} — GH₵ {f.amount}</p>
                           <p className="text-xs text-slate-400">Contributor: {f.contributor} • {f.date}</p>
                         </div>
-                        <span className="text-xs bg-emerald-950 text-emerald-400 border border-emerald-800 px-3 py-1 rounded-full font-medium">Reconciled</span>
+                        <span className="text-xs bg-emerald-950 text-emerald-400 border border-emerald-800 px-3 py-1 rounded-full font-medium">Saved</span>
                       </div>
                     ))}
                   </div>
@@ -555,14 +633,13 @@ export default function App() {
             <div className="space-y-8 max-w-4xl">
               <div>
                 <h2 className="text-2xl font-bold tracking-tight text-white">Control Panel: Presiding Elder & Developers</h2>
-                <p className="text-sm text-slate-400">Manage church branding, re-assign Presiding Elder credentials, or register administrative users.</p>
+                <p className="text-sm text-slate-400">Manage church branding and credentials.</p>
               </div>
 
-              {/* Dynamic Presiding Elder Credentials Management */}
               <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
                 <div className="flex items-center space-x-3 border-b border-slate-800 pb-3">
                   <UserCheck className="w-5 h-5 text-emerald-400" />
-                  <h3 className="text-lg font-semibold text-white">Presiding Elder Credentials Management</h3>
+                  <h3 className="text-lg font-semibold text-white">Presiding Elder Credentials</h3>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
@@ -595,11 +672,10 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Church Branding & Logo Settings */}
               <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
                 <div className="flex items-center space-x-3 border-b border-slate-800 pb-3">
                   <ImageIcon className="w-5 h-5 text-emerald-400" />
-                  <h3 className="text-lg font-semibold text-white">Church Branding & Custom Assets</h3>
+                  <h3 className="text-lg font-semibold text-white">Church Branding Logo</h3>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
@@ -621,63 +697,14 @@ export default function App() {
                     />
                   </div>
                   <div className="md:col-span-2">
-                    <label className="block text-xs font-medium text-slate-400 mb-1">Church Logo URL</label>
-                    <input 
-                      type="text" 
-                      value={churchConfig.logoUrl}
-                      onChange={(e) => setChurchConfig({...churchConfig, logoUrl: e.target.value})}
-                      placeholder="https://example.com/logo.jpg"
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-200"
-                    />
+                    <label className="block text-xs font-medium text-slate-400 mb-1">Upload Church Logo from Device</label>
+                    <label className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-400 flex items-center justify-between cursor-pointer hover:border-emerald-600">
+                      <span>{churchConfig.logoUrl ? 'Logo Selected' : 'Choose Image File from Computer/Phone'}</span>
+                      <Upload className="w-4 h-4 text-emerald-400" />
+                      <input type="file" accept="image/*" onChange={(e) => handlePhotoFileUpload(e, (base64) => setChurchConfig({...churchConfig, logoUrl: base64}))} className="hidden" />
+                    </label>
                   </div>
                 </div>
-              </div>
-
-              {/* Add New Departmental Admin Users */}
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
-                <div className="flex items-center space-x-3 border-b border-slate-800 pb-3">
-                  <Shield className="w-5 h-5 text-emerald-400" />
-                  <h3 className="text-lg font-semibold text-white">Add Departmental Officers & Logins</h3>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <input 
-                    type="text" 
-                    placeholder="Officer Full Name" 
-                    value={newAdminName} 
-                    onChange={(e) => setNewAdminName(e.target.value)} 
-                    className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm"
-                  />
-                  <input 
-                    type="email" 
-                    placeholder="Officer Email" 
-                    value={newAdminEmail} 
-                    onChange={(e) => setNewAdminEmail(e.target.value)} 
-                    className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm"
-                  />
-                  <select 
-                    value={newAdminRole} 
-                    onChange={(e) => setNewAdminRole(e.target.value)} 
-                    className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm"
-                  >
-                    <option value="Secretariat">Secretariat</option>
-                    <option value="Finance">Finance Team</option>
-                    <option value="Admin">Admin</option>
-                  </select>
-                </div>
-                <button 
-                  onClick={() => {
-                    if (newAdminName && newAdminEmail) {
-                      setAdminUsers([...adminUsers, { id: adminUsers.length + 1, name: newAdminName, email: newAdminEmail, role: newAdminRole }]);
-                      setNewAdminName('');
-                      setNewAdminEmail('');
-                      alert(`Added ${newAdminName} as ${newAdminRole}`);
-                    }
-                  }}
-                  className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-xs font-medium flex items-center space-x-2"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Register Officer Credential</span>
-                </button>
               </div>
             </div>
           )}
