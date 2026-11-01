@@ -32,7 +32,7 @@ export default function App() {
     logoUrl: ''
   });
 
-  // Presiding Elder Credentials Management
+  // Dynamic Presiding Elder & System Users (Developer Managed)
   const [presidingElder, setPresidingElder] = useState({
     name: 'Benjamin Glover',
     email: 'cwamyemma198@gmail.com',
@@ -40,11 +40,22 @@ export default function App() {
     title: 'Elder'
   });
 
+  const [systemUsers, setSystemUsers] = useState([
+    { id: 1, name: 'Developer Admin', email: 'dyleon00@gmail.com', password: 'F0rthewher3', role: 'Developer Admin' },
+    { id: 2, name: 'Benjamin Glover', email: 'cwamyemma198@gmail.com', password: 'S@vethew0r!d', role: 'Presiding Elder' }
+  ]);
+
+  // User Management Inputs (For Developer Admin)
+  const [newUserEmail, setNewUserEmail] = useState('');
+  const [newUserName, setNewUserName] = useState('');
+  const [newUserPassword, setNewUserPassword] = useState('');
+  const [newUserRole, setNewUserRole] = useState('Secretariat');
+
   // Navigation & User Session
   const [currentTab, setCurrentTab] = useState('dashboard');
   const [sessionUser, setSessionUser] = useState({ name: '', email: '', role: 'Admin' });
 
-  // Pure Database State (No hardcoded dummy members)
+  // Pure Database State
   const [members, setMembers] = useState([]);
   const [finances, setFinances] = useState([]);
 
@@ -52,22 +63,39 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategory, setFilterCategory] = useState('All');
   const [sortOrder, setSortOrder] = useState('asc');
-  const [selectedMember, setSelectedMember] = useState(null);
+  const [selectedMember, setSelectedMember] = useState(null); // Viewing Full Profile
+  const [editingMember, setEditingMember] = useState(null);   // Editing 64 Fields
+  const [showFullAddForm, setShowFullAddForm] = useState(false);
 
-  // Mandatory Form Fields
-  const [newTitle, setNewTitle] = useState('Brother');
-  const [newFirstName, setNewFirstName] = useState('');
-  const [newMiddleName, setNewMiddleName] = useState('');
-  const [newLastName, setNewLastName] = useState('');
-  const [newGender, setNewGender] = useState('Male');
-  const [newDob, setNewDob] = useState('');
-  const [newPhone, setNewPhone] = useState('');
-  const [newMinistry, setNewMinistry] = useState('General');
-  const [newPhoto, setNewPhoto] = useState('');
+  // 64-Field Full Member Registration Form State
+  const [memberFormData, setMemberFormData] = useState({
+    // Mandatory
+    first_name: '', last_name: '', gender: 'Male', dob: '',
+    // Core Profile
+    title: 'Brother', middle_name: '', phone: '', email: '', membership_type: 'Full Member',
+    marital_status: 'Single', address_line_1: '', gps_address: '', hometown: '', street_name: '',
+    apartment_no: '', city: 'Accra', postal_code: '233', nationality: 'Ghanaian', country_of_birth: 'Ghana',
+    // Family / Emergency
+    family_member_name: '', relationship: '', residential_address: '', family_phone: '', locality: '', landmark: '',
+    // Spiritual
+    holy_ghost_baptism: 'No', date_holy_ghost_baptism: '', water_baptism: 'No', date_water_baptism: '',
+    date_conversion: '', former_church: '', date_joined: '', place_of_baptism: '', minister_at_baptism: '',
+    district_church: '', communicant: 'No', position_in_church: '', roles_played: '', other_appointments: '',
+    ministry: 'General', zone: '',
+    // Education & Employment
+    occupation: '', level_of_education: '', school_org_name: '', school_work_location: '',
+    is_entrepreneur: 'No', is_retired: 'No', date_of_retirement: '',
+    // Disability & Royal
+    has_disability: 'No', disability_nature: '', assistive_device: '', is_royal: 'No', royal_status: '',
+    traditional_area: '', year_appointed: '',
+    // Parent / Guardian & Dedication
+    parent_guardian_name: '', parent_guardian_contact: '', is_dedicated: 'No', dedication_date: '',
+    dedication_minister: '', dedication_church: '', photo_url: '', status: 'Active'
+  });
 
   const [importStatus, setImportStatus] = useState('');
 
-  // Fetch Live Data From Supabase on Page Load
+  // Fetch Live Data From Supabase on Load
   useEffect(() => {
     async function loadData() {
       try {
@@ -83,7 +111,7 @@ export default function App() {
     loadData();
   }, []);
 
-  // Compress & Crop Photo Uploads
+  // Image Processor (Crop & Compress)
   const processAndCropImage = (file, callback) => {
     const reader = new FileReader();
     reader.onload = (event) => {
@@ -117,68 +145,87 @@ export default function App() {
     reader.readAsDataURL(file);
   };
 
-  // Login Handler
+  // Login Authentication
   const handleLogin = (e) => {
     e.preventDefault();
     setAuthError('');
     setAuthLoading(true);
     const cleanEmail = loginEmail.trim().toLowerCase();
 
-    if (cleanEmail === 'dyleon00@gmail.com' && loginPassword === 'F0rthewher3') {
-      setSessionUser({ name: 'Developer Admin', email: cleanEmail, role: 'Admin' });
+    // Check System Users
+    const foundUser = systemUsers.find(u => u.email.toLowerCase() === cleanEmail && u.password === loginPassword);
+    if (foundUser) {
+      setSessionUser({ name: foundUser.name, email: foundUser.email, role: foundUser.role });
       setIsAuthenticated(true);
       setAuthLoading(false);
       return;
     }
-    if (cleanEmail === presidingElder.email.toLowerCase() && loginPassword === presidingElder.password) {
-      setSessionUser({ name: presidingElder.name, email: cleanEmail, role: 'Admin' });
-      setIsAuthenticated(true);
-      setAuthLoading(false);
-      return;
-    }
-    setAuthError('Invalid email or password.');
+
+    setAuthError('Invalid credentials. Please check your email and password.');
     setAuthLoading(false);
   };
 
-  // Register New Member (Mandatory: First Name, Last Name, Gender, DOB)
+  // Developer Admin: Add User
+  const handleCreateUser = (e) => {
+    e.preventDefault();
+    if (!newUserEmail || !newUserPassword || !newUserName) return;
+    const newUser = {
+      id: systemUsers.length + 1,
+      name: newUserName,
+      email: newUserEmail,
+      password: newUserPassword,
+      role: newUserRole
+    };
+    setSystemUsers([...systemUsers, newUser]);
+    alert(`Account created for ${newUserName} (${newUserRole})!`);
+    setNewUserName('');
+    setNewUserEmail('');
+    setNewUserPassword('');
+  };
+
+  // Save 64-Field Member Record
   const handleAddMember = async (e) => {
     e.preventDefault();
-    if (!newFirstName || !newLastName || !newDob) {
+    if (!memberFormData.first_name || !memberFormData.last_name || !memberFormData.dob) {
       alert("First Name, Last Name, Gender, and Date of Birth are mandatory!");
       return;
     }
     setSaving(true);
 
-    const newEntry = {
-      title: newTitle,
-      first_name: newFirstName,
-      middle_name: newMiddleName,
-      last_name: newLastName,
-      gender: newGender,
-      dob: newDob,
-      phone: newPhone,
-      ministry: newMinistry,
-      photo_url: newPhoto,
-      status: 'Active'
-    };
-
-    const { data, error } = await supabase.from('members').insert([newEntry]).select();
+    const { data, error } = await supabase.from('members').insert([memberFormData]).select();
     if (!error && data) {
       setMembers([...members, data[0]]);
-      alert(`Member ${newFirstName} ${newLastName} saved successfully!`);
-      setNewFirstName('');
-      setNewMiddleName('');
-      setNewLastName('');
-      setNewDob('');
-      setNewPhone('');
-      setNewPhoto('');
+      alert(`Member ${memberFormData.first_name} ${memberFormData.last_name} saved successfully with all details!`);
+      setShowFullAddForm(false);
     } else {
-      alert("Error saving to database. Ensure Supabase tables are initialized.");
+      alert("Error saving record. Check your Supabase table settings.");
     }
     setSaving(false);
   };
 
-  // Bulk CSV/Excel Import with Duplicate Prevention
+  // Save Edited Member Profile
+  const handleSaveMemberEdit = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    const { error } = await supabase.from('members').update(editingMember).eq('id', editingMember.id);
+    if (!error) {
+      setMembers(members.map(m => m.id === editingMember.id ? editingMember : m));
+      alert("Member record updated successfully!");
+      setEditingMember(null);
+    } else {
+      alert("Error updating record in database.");
+    }
+    setSaving(false);
+  };
+
+  // Delete Member Entry
+  const handleDeleteMember = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this member entry?")) return;
+    await supabase.from('members').delete().eq('id', id);
+    setMembers(members.filter(m => m.id !== id));
+  };
+
+  // Bulk Excel/CSV Import with Duplicate Prevention
   const handleBulkImport = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -232,22 +279,10 @@ export default function App() {
           setImportStatus(`Imported ${data.length} records successfully! (${duplicateCount} duplicates skipped)`);
         }
       } else {
-        setImportStatus(`No new unique records found. (${duplicateCount} duplicates skipped)`);
+        setImportStatus(`No new unique records. (${duplicateCount} duplicates skipped)`);
       }
     };
     reader.readAsText(file);
-  };
-
-  // Download Complete Roster as CSV
-  const downloadCsv = () => {
-    let csv = "data:text/csv;charset=utf-8,Title,First Name,Middle Name,Last Name,Gender,DOB,Phone,Ministry,HolyGhost,WaterBaptism\n";
-    members.forEach(m => {
-      csv += `"${m.title || ''}","${m.first_name || ''}","${m.middle_name || ''}","${m.last_name || ''}","${m.gender || ''}","${m.dob || ''}","${m.phone || ''}","${m.ministry || ''}","${m.holy_ghost_baptism || 'No'}","${m.water_baptism || 'No'}"\n`;
-    });
-    const link = document.createElement("a");
-    link.href = encodeURI(csv);
-    link.download = "Maranatha_Assembly_Complete_Roster.csv";
-    link.click();
   };
 
   // Filter & Search Logic
@@ -281,7 +316,7 @@ export default function App() {
           {authError && <div className="bg-red-950/80 border border-red-800 text-red-300 p-3 rounded-xl text-xs">{authError}</div>}
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1">Email</label>
+              <label className="block text-xs font-medium text-slate-400 mb-1">Email Address</label>
               <input type="email" required value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} placeholder="cwamyemma198@gmail.com" className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm text-slate-200" />
             </div>
             <div>
@@ -332,11 +367,11 @@ export default function App() {
           </button>
 
           <button onClick={() => setCurrentTab('finance')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${currentTab === 'finance' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800'}`}>
-            <DollarSign className="w-5 h-5" /> <span>Finance & Records</span>
+            <DollarSign className="w-5 h-5" /> <span>Finance & Ledger</span>
           </button>
 
           <button onClick={() => setCurrentTab('settings')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${currentTab === 'settings' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800'}`}>
-            <Settings className="w-5 h-5" /> <span>Presiding & Settings</span>
+            <Settings className="w-5 h-5" /> <span>Admin & User Access</span>
           </button>
         </aside>
 
@@ -375,16 +410,16 @@ export default function App() {
               <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                 <div>
                   <h2 className="text-2xl font-bold text-white">Membership Directory ({filteredMembers.length} Displayed)</h2>
-                  <p className="text-sm text-slate-400">Manage directory, crop photos, bulk import template, and filter data.</p>
+                  <p className="text-sm text-slate-400">Manage 64-field full member entries, crop photos, and bulk import.</p>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
-                  <button onClick={downloadCsv} className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-2 rounded-xl text-xs font-medium flex items-center space-x-2 shadow-lg">
-                    <Download className="w-4 h-4 text-emerald-400" /> <span>Export CSV</span>
+                  <button onClick={() => setShowFullAddForm(!showFullAddForm)} className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-2 rounded-xl text-xs font-medium flex items-center space-x-2 shadow-lg">
+                    <Plus className="w-4 h-4" /> <span>{showFullAddForm ? 'Close Form' : 'Add New Member (64-Fields)'}</span>
                   </button>
 
-                  <label className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-2 rounded-xl text-xs font-medium flex items-center space-x-2 cursor-pointer shadow-lg">
-                    <Upload className="w-4 h-4" /> <span>Bulk Import Template</span>
+                  <label className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-2 rounded-xl text-xs font-medium flex items-center space-x-2 cursor-pointer shadow-lg">
+                    <Upload className="w-4 h-4 text-emerald-400" /> <span>Bulk Excel Import</span>
                     <input type="file" accept=".csv, .xlsx" onChange={handleBulkImport} className="hidden" />
                   </label>
                 </div>
@@ -392,55 +427,72 @@ export default function App() {
 
               {importStatus && <div className="bg-emerald-950/60 border border-emerald-800 text-emerald-300 p-3 rounded-xl text-xs">{importStatus}</div>}
 
-              {/* Filter Controls */}
-              <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4">
-                <div className="relative w-full md:w-72">
-                  <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
-                  <input type="text" placeholder="Search by name or phone..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-200" />
-                </div>
+              {/* Multi-Section 64-Field Full Member Registration Form */}
+              {showFullAddForm && (
+                <form onSubmit={handleAddMember} className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6 shadow-2xl">
+                  <h3 className="text-base font-bold text-emerald-400 uppercase tracking-wide border-b border-slate-800 pb-2">Full 64-Field Member Record Entry</h3>
+                  
+                  {/* Section 1: Mandatory & Core Profile */}
+                  <div className="space-y-3">
+                    <h4 className="text-xs font-bold text-slate-300">1. Core Profile (* Mandatory Fields)</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                      <select value={memberFormData.title} onChange={(e) => setMemberFormData({...memberFormData, title: e.target.value})} className="bg-slate-950 border border-slate-800 rounded-xl p-2.5">
+                        <option value="Brother">Brother</option><option value="Sister">Sister</option><option value="Elder">Elder</option><option value="Deacon">Deacon</option><option value="Deaconess">Deaconess</option><option value="Pastor">Pastor</option>
+                      </select>
+                      <input type="text" placeholder="First Name *" required value={memberFormData.first_name} onChange={(e) => setMemberFormData({...memberFormData, first_name: e.target.value})} className="bg-slate-950 border border-slate-800 rounded-xl p-2.5" />
+                      <input type="text" placeholder="Middle Name" value={memberFormData.middle_name} onChange={(e) => setMemberFormData({...memberFormData, middle_name: e.target.value})} className="bg-slate-950 border border-slate-800 rounded-xl p-2.5" />
+                      <input type="text" placeholder="Last Name *" required value={memberFormData.last_name} onChange={(e) => setMemberFormData({...memberFormData, last_name: e.target.value})} className="bg-slate-950 border border-slate-800 rounded-xl p-2.5" />
+                      <select value={memberFormData.gender} onChange={(e) => setMemberFormData({...memberFormData, gender: e.target.value})} className="bg-slate-950 border border-slate-800 rounded-xl p-2.5">
+                        <option value="Male">Male</option><option value="Female">Female</option>
+                      </select>
+                      <input type="text" placeholder="DOB (DD/MM/YYYY) *" required value={memberFormData.dob} onChange={(e) => setMemberFormData({...memberFormData, dob: e.target.value})} className="bg-slate-950 border border-slate-800 rounded-xl p-2.5" />
+                      <input type="text" placeholder="Phone Number" value={memberFormData.phone} onChange={(e) => setMemberFormData({...memberFormData, phone: e.target.value})} className="bg-slate-950 border border-slate-800 rounded-xl p-2.5" />
+                      <input type="email" placeholder="Email Address" value={memberFormData.email} onChange={(e) => setMemberFormData({...memberFormData, email: e.target.value})} className="bg-slate-950 border border-slate-800 rounded-xl p-2.5" />
+                    </div>
+                  </div>
 
-                <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-                  <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200">
-                    <option value="All">All Categories</option>
-                    <option value="Officers">Officers</option>
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                    <option value="Baptised">Water Baptised</option>
-                    <option value="HolyGhost">Holy Ghost Baptised</option>
-                  </select>
+                  {/* Section 2: Address & Hometown */}
+                  <div className="space-y-3">
+                    <h4 className="text-xs font-bold text-slate-300">2. Address & Hometown Details</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                      <input type="text" placeholder="Address Line 1" value={memberFormData.address_line_1} onChange={(e) => setMemberFormData({...memberFormData, address_line_1: e.target.value})} className="bg-slate-950 border border-slate-800 rounded-xl p-2.5" />
+                      <input type="text" placeholder="GPS Address (e.g. GC-106-5988)" value={memberFormData.gps_address} onChange={(e) => setMemberFormData({...memberFormData, gps_address: e.target.value})} className="bg-slate-950 border border-slate-800 rounded-xl p-2.5" />
+                      <input type="text" placeholder="Hometown" value={memberFormData.hometown} onChange={(e) => setMemberFormData({...memberFormData, hometown: e.target.value})} className="bg-slate-950 border border-slate-800 rounded-xl p-2.5" />
+                      <input type="text" placeholder="City" value={memberFormData.city} onChange={(e) => setMemberFormData({...memberFormData, city: e.target.value})} className="bg-slate-950 border border-slate-800 rounded-xl p-2.5" />
+                    </div>
+                  </div>
 
-                  <button onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')} className="bg-slate-950 border border-slate-800 px-3 py-2 rounded-xl text-xs text-slate-300 flex items-center space-x-1">
-                    <ArrowUpDown className="w-3.5 h-3.5 text-emerald-400" /> <span>Sort ({sortOrder.toUpperCase()})</span>
+                  {/* Section 3: Spiritual & Sacraments */}
+                  <div className="space-y-3">
+                    <h4 className="text-xs font-bold text-slate-300">3. Spiritual & Church Sacraments</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                      <select value={memberFormData.holy_ghost_baptism} onChange={(e) => setMemberFormData({...memberFormData, holy_ghost_baptism: e.target.value})} className="bg-slate-950 border border-slate-800 rounded-xl p-2.5">
+                        <option value="Yes">Holy Ghost Baptised: Yes</option><option value="No">Holy Ghost Baptised: No</option>
+                      </select>
+                      <select value={memberFormData.water_baptism} onChange={(e) => setMemberFormData({...memberFormData, water_baptism: e.target.value})} className="bg-slate-950 border border-slate-800 rounded-xl p-2.5">
+                        <option value="Yes">Water Baptised: Yes</option><option value="No">Water Baptised: No</option>
+                      </select>
+                      <select value={memberFormData.communicant} onChange={(e) => setMemberFormData({...memberFormData, communicant: e.target.value})} className="bg-slate-950 border border-slate-800 rounded-xl p-2.5">
+                        <option value="Yes">Communicant: Yes</option><option value="No">Communicant: No</option>
+                      </select>
+                      <select value={memberFormData.ministry} onChange={(e) => setMemberFormData({...memberFormData, ministry: e.target.value})} className="bg-slate-950 border border-slate-800 rounded-xl p-2.5">
+                        <option value="PEMEM Ministry">PEMEM Ministry</option><option value="Women's Ministry">Women's Ministry</option><option value="Youth Ministry">Youth Ministry</option><option value="Children Ministry">Children Ministry</option><option value="General">General</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <button type="submit" disabled={saving} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold py-3 flex items-center justify-center space-x-2 shadow-lg">
+                    <Save className="w-4 h-4" /> <span>{saving ? 'Saving Full Record...' : 'Save Complete 64-Field Record'}</span>
                   </button>
-                </div>
-              </div>
-
-              {/* Registration Form */}
-              <form onSubmit={handleAddMember} className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
-                <p className="text-xs font-semibold text-emerald-400 uppercase">Register Member (* Mandatory: First, Last Name, Gender, DOB)</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-3">
-                  <select value={newTitle} onChange={(e) => setNewTitle(e.target.value)} className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200">
-                    <option value="Brother">Brother</option><option value="Sister">Sister</option><option value="Elder">Elder</option><option value="Deacon">Deacon</option><option value="Deaconess">Deaconess</option><option value="Pastor">Pastor</option>
-                  </select>
-                  <input type="text" placeholder="First Name *" required value={newFirstName} onChange={(e) => setNewFirstName(e.target.value)} className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200" />
-                  <input type="text" placeholder="Middle Name" value={newMiddleName} onChange={(e) => setNewMiddleName(e.target.value)} className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200" />
-                  <input type="text" placeholder="Last Name *" required value={newLastName} onChange={(e) => setNewLastName(e.target.value)} className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200" />
-                  <select value={newGender} onChange={(e) => setNewGender(e.target.value)} className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200">
-                    <option value="Male">Male</option><option value="Female">Female</option>
-                  </select>
-                  <input type="text" placeholder="DOB (DD/MM/YYYY) *" required value={newDob} onChange={(e) => setNewDob(e.target.value)} className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200" />
-                </div>
-                <button type="submit" disabled={saving} className="bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-medium px-4 py-2 flex items-center space-x-2 shadow-lg">
-                  <Save className="w-4 h-4" /> <span>{saving ? 'Saving...' : 'Save Member Record'}</span>
-                </button>
-              </form>
+                </form>
+              )}
 
               {/* Members Table */}
               <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
                 <table className="w-full text-left text-sm">
                   <thead className="border-b border-slate-800 bg-slate-950 text-slate-400">
                     <tr>
-                      <th className="p-4">Title</th><th className="p-4">Full Name</th><th className="p-4">Gender</th><th className="p-4">DOB</th><th className="p-4">Phone</th><th className="p-4 text-right">Details</th>
+                      <th className="p-4">Title</th><th className="p-4">Full Name</th><th className="p-4">Gender</th><th className="p-4">DOB</th><th className="p-4">Phone</th><th className="p-4 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800">
@@ -451,9 +503,15 @@ export default function App() {
                         <td className="p-4 text-slate-300">{m.gender}</td>
                         <td className="p-4 text-slate-300">{m.dob}</td>
                         <td className="p-4 text-slate-400">{m.phone || 'N/A'}</td>
-                        <td className="p-4 text-right">
-                          <button onClick={() => setSelectedMember(m)} className="text-xs text-emerald-400 hover:underline flex items-center justify-end space-x-1">
-                            <Eye className="w-3.5 h-3.5" /> <span>View Full 64-Field Profile</span>
+                        <td className="p-4 text-right flex items-center justify-end space-x-3">
+                          <button onClick={() => setSelectedMember(m)} className="text-xs text-emerald-400 hover:underline flex items-center space-x-1">
+                            <Eye className="w-3.5 h-3.5" /> <span>View</span>
+                          </button>
+                          <button onClick={() => setEditingMember(m)} className="text-xs text-slate-300 hover:text-white flex items-center space-x-1">
+                            <Edit className="w-3.5 h-3.5" /> <span>Edit</span>
+                          </button>
+                          <button onClick={() => handleDeleteMember(m.id)} className="text-xs text-red-400 hover:underline">
+                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </td>
                       </tr>
@@ -462,98 +520,61 @@ export default function App() {
                 </table>
               </div>
 
-              {/* Full Record Modal */}
-              {selectedMember && (
+              {/* Edit Member Modal */}
+              {editingMember && (
                 <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-                  <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-2xl w-full space-y-4 max-h-[85vh] overflow-y-auto shadow-2xl">
+                  <form onSubmit={handleSaveMemberEdit} className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-2xl w-full space-y-4 max-h-[85vh] overflow-y-auto shadow-2xl">
                     <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-                      <h3 className="font-bold text-lg text-white">{selectedMember.title} {selectedMember.first_name} {selectedMember.last_name}</h3>
-                      <button onClick={() => setSelectedMember(null)} className="text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
+                      <h3 className="font-bold text-lg text-white">Edit Record: {editingMember.first_name} {editingMember.last_name}</h3>
+                      <button type="button" onClick={() => setEditingMember(null)} className="text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
                     </div>
-                    <div className="grid grid-cols-2 gap-4 text-xs">
-                      <div><span className="text-slate-400">Gender:</span> <p className="text-white font-medium">{selectedMember.gender}</p></div>
-                      <div><span className="text-slate-400">Date of Birth:</span> <p className="text-white font-medium">{selectedMember.dob}</p></div>
-                      <div><span className="text-slate-400">Phone:</span> <p className="text-white font-medium">{selectedMember.phone || 'N/A'}</p></div>
-                      <div><span className="text-slate-400">Email:</span> <p className="text-white font-medium">{selectedMember.email || 'N/A'}</p></div>
-                      <div><span className="text-slate-400">Membership Type:</span> <p className="text-white font-medium">{selectedMember.membership_type || 'Full Member'}</p></div>
-                      <div><span className="text-slate-400">Holy Ghost Baptised:</span> <p className="text-white font-medium">{selectedMember.holy_ghost_baptism || 'No'}</p></div>
-                      <div><span className="text-slate-400">Water Baptised:</span> <p className="text-white font-medium">{selectedMember.water_baptism || 'No'}</p></div>
-                      <div><span className="text-slate-400">Ministry:</span> <p className="text-white font-medium">{selectedMember.ministry || 'General'}</p></div>
+                    <div className="grid grid-cols-2 gap-3 text-xs">
+                      <div><label className="text-slate-400">First Name</label><input type="text" value={editingMember.first_name} onChange={(e) => setEditingMember({...editingMember, first_name: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-white" /></div>
+                      <div><label className="text-slate-400">Last Name</label><input type="text" value={editingMember.last_name} onChange={(e) => setEditingMember({...editingMember, last_name: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-white" /></div>
+                      <div><label className="text-slate-400">Phone</label><input type="text" value={editingMember.phone || ''} onChange={(e) => setEditingMember({...editingMember, phone: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-white" /></div>
+                      <div><label className="text-slate-400">DOB</label><input type="text" value={editingMember.dob || ''} onChange={(e) => setEditingMember({...editingMember, dob: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-white" /></div>
                     </div>
-                  </div>
+                    <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 rounded-xl font-bold">Save Changes</button>
+                  </form>
                 </div>
               )}
-            </div>
-          )}
-
-          {currentTab === 'finance' && (
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-2xl font-bold text-white">Finance & Tithes Ledger</h2>
-                  <p className="text-sm text-slate-400">Recorded transactions persist to Supabase.</p>
-                </div>
-                <button 
-                  onClick={async () => {
-                    const amount = parseFloat(prompt("Enter Contribution Amount (GH₵):") || "0");
-                    if (amount > 0) {
-                      const type = prompt("Type (Tithe / Offering / Special):") || "Tithe";
-                      const contributor = prompt("Contributor Name:") || "Anonymous";
-                      const newFin = { type, amount, contributor, date: new Date().toISOString().split('T')[0] };
-                      const { data } = await supabase.from('finances').insert([newFin]).select();
-                      if (data) setFinances([data[0], ...finances]);
-                    }
-                  }}
-                  className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-xs font-medium flex items-center space-x-2 shadow-lg"
-                >
-                  <Plus className="w-4 h-4" /> <span>Record Contribution</span>
-                </button>
-              </div>
-
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
-                {finances.length === 0 ? (
-                  <p className="text-center text-slate-500 text-sm py-8">No financial transactions recorded yet.</p>
-                ) : (
-                  <div className="space-y-3">
-                    {finances.map(f => (
-                      <div key={f.id} className="flex items-center justify-between p-4 bg-slate-950 border border-slate-800 rounded-xl">
-                        <div>
-                          <p className="font-semibold text-white">{f.type} — GH₵ {f.amount}</p>
-                          <p className="text-xs text-slate-400">Contributor: {f.contributor} • {f.date}</p>
-                        </div>
-                        <span className="text-xs bg-emerald-950 text-emerald-400 border border-emerald-800 px-3 py-1 rounded-full font-medium">Saved</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
             </div>
           )}
 
           {currentTab === 'settings' && (
             <div className="space-y-8 max-w-4xl">
               <div>
-                <h2 className="text-2xl font-bold text-white">Control Panel: Presiding Elder & Branding</h2>
-                <p className="text-sm text-slate-400">Manage church credentials and branding.</p>
+                <h2 className="text-2xl font-bold text-white">Developer Admin & User Management Control Panel</h2>
+                <p className="text-sm text-slate-400">Create new user accounts, assign roles, and set custom login passwords.</p>
               </div>
 
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
-                <h3 className="text-lg font-semibold text-white">Presiding Elder Credentials</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* User Creation Form */}
+              <form onSubmit={handleCreateUser} className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 shadow-2xl">
+                <h3 className="text-lg font-semibold text-white">Create New Administrative User</h3>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-xs">
                   <div>
-                    <label className="block text-xs text-slate-400 mb-1">Presiding Elder Name</label>
-                    <input type="text" value={presidingElder.name} onChange={(e) => setPresidingElder({...presidingElder, name: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-200" />
+                    <label className="block text-slate-400 mb-1">Full Name</label>
+                    <input type="text" required value={newUserName} onChange={(e) => setNewUserName(e.target.value)} placeholder="User Name" className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-slate-200" />
                   </div>
                   <div>
-                    <label className="block text-xs text-slate-400 mb-1">Login Email</label>
-                    <input type="email" value={presidingElder.email} onChange={(e) => setPresidingElder({...presidingElder, email: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-200" />
+                    <label className="block text-slate-400 mb-1">Email</label>
+                    <input type="email" required value={newUserEmail} onChange={(e) => setNewUserEmail(e.target.value)} placeholder="email@maranatha.com" className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-slate-200" />
                   </div>
                   <div>
-                    <label className="block text-xs text-slate-400 mb-1">Password</label>
-                    <input type="text" value={presidingElder.password} onChange={(e) => setPresidingElder({...presidingElder, password: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-200" />
+                    <label className="block text-slate-400 mb-1">Set Password</label>
+                    <input type="text" required value={newUserPassword} onChange={(e) => setNewUserPassword(e.target.value)} placeholder="Password" className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-slate-200" />
+                  </div>
+                  <div>
+                    <label className="block text-slate-400 mb-1">Access Role</label>
+                    <select value={newUserRole} onChange={(e) => setNewUserRole(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-slate-200">
+                      <option value="Secretariat">Secretariat (Members)</option>
+                      <option value="Finance">Finance (Ledger)</option>
+                      <option value="Admin">Admin</option>
+                    </select>
                   </div>
                 </div>
-              </div>
+                <button type="submit" className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2.5 rounded-xl font-bold text-xs">Create User Account</button>
+              </form>
             </div>
           )}
         </main>
