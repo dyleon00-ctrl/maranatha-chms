@@ -32,7 +32,7 @@ export default function App() {
     logoUrl: ''
   });
 
-  // Dynamic Presiding Elder Credentials Management
+  // Presiding Elder Credentials Management
   const [presidingElder, setPresidingElder] = useState({
     name: 'Benjamin Glover',
     email: 'cwamyemma198@gmail.com',
@@ -41,20 +41,20 @@ export default function App() {
   });
 
   // Navigation & User Session
-  const [currentTab, setCurrentTab] = useState('members');
+  const [currentTab, setCurrentTab] = useState('dashboard');
   const [sessionUser, setSessionUser] = useState({ name: '', email: '', role: 'Admin' });
 
   // Pure Database State (No hardcoded dummy members)
   const [members, setMembers] = useState([]);
   const [finances, setFinances] = useState([]);
 
-  // Search, Filter & View States
+  // Search, Filter & Modal States
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategory, setFilterCategory] = useState('All');
   const [sortOrder, setSortOrder] = useState('asc');
-  const [selectedMember, setSelectedMember] = useState(null); // Full Detail Modal
+  const [selectedMember, setSelectedMember] = useState(null);
 
-  // Form Mandatory & Optional Fields
+  // Mandatory Form Fields
   const [newTitle, setNewTitle] = useState('Brother');
   const [newFirstName, setNewFirstName] = useState('');
   const [newMiddleName, setNewMiddleName] = useState('');
@@ -67,7 +67,7 @@ export default function App() {
 
   const [importStatus, setImportStatus] = useState('');
 
-  // Fetch Live Data From Supabase
+  // Fetch Live Data From Supabase on Page Load
   useEffect(() => {
     async function loadData() {
       try {
@@ -140,7 +140,7 @@ export default function App() {
     setAuthLoading(false);
   };
 
-  // Register New Member (Enforcing mandatory First Name, Last Name, Gender, DOB)
+  // Register New Member (Mandatory: First Name, Last Name, Gender, DOB)
   const handleAddMember = async (e) => {
     e.preventDefault();
     if (!newFirstName || !newLastName || !newDob) {
@@ -165,7 +165,7 @@ export default function App() {
     const { data, error } = await supabase.from('members').insert([newEntry]).select();
     if (!error && data) {
       setMembers([...members, data[0]]);
-      alert(`Member ${newFirstName} ${newLastName} registered successfully!`);
+      alert(`Member ${newFirstName} ${newLastName} saved successfully!`);
       setNewFirstName('');
       setNewMiddleName('');
       setNewLastName('');
@@ -173,12 +173,12 @@ export default function App() {
       setNewPhone('');
       setNewPhoto('');
     } else {
-      alert("Error saving member to database. Please check Supabase connection.");
+      alert("Error saving to database. Ensure Supabase tables are initialized.");
     }
     setSaving(false);
   };
 
-  // Bulk CSV/Excel Roster Import with Duplicate Prevention
+  // Bulk CSV/Excel Import with Duplicate Prevention
   const handleBulkImport = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -229,16 +229,16 @@ export default function App() {
         const { data, error } = await supabase.from('members').insert(newRows).select();
         if (!error && data) {
           setMembers([...members, ...data]);
-          setImportStatus(`Imported ${data.length} records. (${duplicateCount} duplicates skipped)`);
+          setImportStatus(`Imported ${data.length} records successfully! (${duplicateCount} duplicates skipped)`);
         }
       } else {
-        setImportStatus(`No new unique records to import. (${duplicateCount} duplicates skipped)`);
+        setImportStatus(`No new unique records found. (${duplicateCount} duplicates skipped)`);
       }
     };
     reader.readAsText(file);
   };
 
-  // Download Complete Membership Directory
+  // Download Complete Roster as CSV
   const downloadCsv = () => {
     let csv = "data:text/csv;charset=utf-8,Title,First Name,Middle Name,Last Name,Gender,DOB,Phone,Ministry,HolyGhost,WaterBaptism\n";
     members.forEach(m => {
@@ -272,26 +272,36 @@ export default function App() {
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-2xl p-8 space-y-6">
+        <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-2xl p-8 space-y-6 shadow-2xl">
           <div className="text-center space-y-2">
-            <div className="inline-flex bg-emerald-600 p-3 rounded-2xl text-white font-bold text-xl">{churchConfig.logoText}</div>
+            <div className="inline-flex bg-emerald-600 p-3 rounded-2xl text-white font-bold text-xl shadow-lg">{churchConfig.logoText}</div>
             <h1 className="text-2xl font-bold text-white">{churchConfig.assemblyName}</h1>
             <p className="text-xs text-slate-400">{churchConfig.area}</p>
           </div>
-          {authError && <div className="bg-red-950 border border-red-800 text-red-300 p-3 rounded-xl text-xs">{authError}</div>}
+          {authError && <div className="bg-red-950/80 border border-red-800 text-red-300 p-3 rounded-xl text-xs">{authError}</div>}
           <form onSubmit={handleLogin} className="space-y-4">
-            <input type="email" required value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} placeholder="Email" className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm" />
-            <input type="password" required value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} placeholder="Password" className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm" />
-            <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-xl font-medium">Sign In</button>
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1">Email</label>
+              <input type="email" required value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} placeholder="cwamyemma198@gmail.com" className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm text-slate-200" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1">Password</label>
+              <input type="password" required value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} placeholder="••••••••" className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm text-slate-200" />
+            </div>
+            <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-xl font-medium shadow-lg flex items-center justify-center space-x-2">
+              <LogIn className="w-4 h-4" /> <span>Secure Login</span>
+            </button>
           </form>
         </div>
       </div>
     );
   }
 
+  const totalFinancesGhc = finances.reduce((sum, f) => sum + Number(f.amount), 0);
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
-      <header className="bg-slate-900 border-b border-slate-800 px-6 py-4 flex items-center justify-between">
+      <header className="bg-slate-900 border-b border-slate-800 px-6 py-4 flex items-center justify-between sticky top-0 z-50">
         <div className="flex items-center space-x-3">
           <div className="bg-emerald-600 p-2 rounded-xl text-white font-bold">{churchConfig.logoText}</div>
           <div>
@@ -299,113 +309,249 @@ export default function App() {
             <p className="text-xs text-slate-400">{churchConfig.area}</p>
           </div>
         </div>
-        <button onClick={() => setIsAuthenticated(false)} className="bg-slate-800 text-slate-300 p-2 rounded-xl text-xs flex items-center space-x-2">
-          <LogOut className="w-4 h-4" /> <span>Log Out</span>
-        </button>
+
+        <div className="flex items-center space-x-4">
+          <div className="text-right hidden sm:block">
+            <p className="text-sm font-medium text-emerald-400">{sessionUser.name}</p>
+            <p className="text-xs text-slate-400">Role: <span className="text-emerald-300 font-semibold">{sessionUser.role}</span></p>
+          </div>
+          <button onClick={() => setIsAuthenticated(false)} className="bg-slate-800 hover:bg-red-950 hover:text-red-400 p-2.5 rounded-xl border border-slate-700 transition-all text-slate-300 flex items-center space-x-2">
+            <LogOut className="w-4 h-4" /> <span className="text-xs font-medium hidden md:inline">Log Out</span>
+          </button>
+        </div>
       </header>
 
-      <div className="flex flex-1">
-        <main className="flex-1 p-6 space-y-6">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div>
-              <h2 className="text-2xl font-bold text-white">Member Directory ({filteredMembers.length})</h2>
-              <p className="text-xs text-slate-400">Database connected. Mandatory fields: First/Last Name, Gender, Date of Birth.</p>
-            </div>
-            <div className="flex space-x-2">
-              <button onClick={downloadCsv} className="bg-slate-800 text-slate-200 px-3 py-2 rounded-xl text-xs font-medium flex items-center space-x-2 border border-slate-700">
-                <Download className="w-4 h-4 text-emerald-400" /> <span>Export CSV</span>
-              </button>
-              <label className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-2 rounded-xl text-xs font-medium flex items-center space-x-2 cursor-pointer">
-                <Upload className="w-4 h-4" /> <span>Bulk Import Template</span>
-                <input type="file" accept=".csv, .xlsx" onChange={handleBulkImport} className="hidden" />
-              </label>
-            </div>
-          </div>
+      <div className="flex flex-1 flex-col md:flex-row">
+        <aside className="w-full md:w-64 bg-slate-900/60 border-r border-slate-800 p-4 space-y-2">
+          <button onClick={() => setCurrentTab('dashboard')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${currentTab === 'dashboard' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800'}`}>
+            <BarChart3 className="w-5 h-5" /> <span>Dashboard & Metrics</span>
+          </button>
 
-          {importStatus && <div className="bg-emerald-950 border border-emerald-800 text-emerald-300 p-3 rounded-xl text-xs">{importStatus}</div>}
+          <button onClick={() => setCurrentTab('members')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${currentTab === 'members' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800'}`}>
+            <Users className="w-5 h-5" /> <span>Membership Directory</span>
+          </button>
 
-          {/* Controls */}
-          <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl flex flex-wrap gap-4 items-center justify-between">
-            <input type="text" placeholder="Search by name or phone..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-xs w-64" />
-            <div className="flex space-x-2">
-              <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200">
-                <option value="All">All Members</option>
-                <option value="Officers">Officers</option>
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
-                <option value="Baptised">Water Baptised</option>
-                <option value="HolyGhost">Holy Ghost Baptised</option>
-              </select>
-              <button onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')} className="bg-slate-950 border border-slate-800 px-3 py-2 rounded-xl text-xs">
-                Sort ({sortOrder.toUpperCase()})
-              </button>
-            </div>
-          </div>
+          <button onClick={() => setCurrentTab('finance')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${currentTab === 'finance' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800'}`}>
+            <DollarSign className="w-5 h-5" /> <span>Finance & Records</span>
+          </button>
 
-          {/* Registration Form */}
-          <form onSubmit={handleAddMember} className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
-            <p className="text-xs font-semibold text-emerald-400 uppercase">Register Member (* Mandatory: First, Last Name, Gender, DOB)</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-3">
-              <select value={newTitle} onChange={(e) => setNewTitle(e.target.value)} className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs">
-                <option value="Brother">Brother</option><option value="Sister">Sister</option><option value="Elder">Elder</option><option value="Deacon">Deacon</option><option value="Deaconess">Deaconess</option><option value="Pastor">Pastor</option>
-              </select>
-              <input type="text" placeholder="First Name *" required value={newFirstName} onChange={(e) => setNewFirstName(e.target.value)} className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs" />
-              <input type="text" placeholder="Middle Name" value={newMiddleName} onChange={(e) => setNewMiddleName(e.target.value)} className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs" />
-              <input type="text" placeholder="Last Name *" required value={newLastName} onChange={(e) => setNewLastName(e.target.value)} className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs" />
-              <select value={newGender} onChange={(e) => setNewGender(e.target.value)} className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs">
-                <option value="Male">Male</option><option value="Female">Female</option>
-              </select>
-              <input type="text" placeholder="DOB (DD/MM/YYYY) *" required value={newDob} onChange={(e) => setNewDob(e.target.value)} className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs" />
-            </div>
-            <button type="submit" disabled={saving} className="bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-medium px-4 py-2 flex items-center space-x-2">
-              <Save className="w-4 h-4" /> <span>{saving ? 'Saving...' : 'Save Member Record'}</span>
-            </button>
-          </form>
+          <button onClick={() => setCurrentTab('settings')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${currentTab === 'settings' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800'}`}>
+            <Settings className="w-5 h-5" /> <span>Presiding & Settings</span>
+          </button>
+        </aside>
 
-          {/* Table */}
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-slate-800 bg-slate-950 text-slate-400">
-                <tr>
-                  <th className="p-4">Title</th><th className="p-4">Full Name</th><th className="p-4">Gender</th><th className="p-4">DOB</th><th className="p-4">Phone</th><th className="p-4 text-right">Details</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800">
-                {filteredMembers.map(m => (
-                  <tr key={m.id} className="hover:bg-slate-800/40">
-                    <td className="p-4"><span className="px-2 py-1 bg-emerald-950 text-emerald-400 rounded-full text-xs">{m.title}</span></td>
-                    <td className="p-4 font-medium text-white">{m.first_name} {m.middle_name || ''} {m.last_name}</td>
-                    <td className="p-4 text-slate-300">{m.gender}</td>
-                    <td className="p-4 text-slate-300">{m.dob}</td>
-                    <td className="p-4 text-slate-400">{m.phone || 'N/A'}</td>
-                    <td className="p-4 text-right">
-                      <button onClick={() => setSelectedMember(m)} className="text-xs text-emerald-400 hover:underline flex items-center justify-end space-x-1">
-                        <Eye className="w-3.5 h-3.5" /> <span>View Full 64-Field Profile</span>
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        <main className="flex-1 p-6 lg:p-8 overflow-y-auto space-y-6">
+          {currentTab === 'dashboard' && (
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-2xl font-bold text-white">Assembly Dashboard</h2>
+                <p className="text-sm text-slate-400">Live stats connected directly to Supabase PostgreSQL.</p>
+              </div>
 
-          {/* Full Record Modal */}
-          {selectedMember && (
-            <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-2xl w-full space-y-4 max-h-[85vh] overflow-y-auto">
-                <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-                  <h3 className="font-bold text-lg text-white">{selectedMember.title} {selectedMember.first_name} {selectedMember.last_name}</h3>
-                  <button onClick={() => setSelectedMember(null)} className="text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
+                  <span className="text-sm text-slate-400 font-medium">Total Registered Members</span>
+                  <p className="text-3xl font-bold text-white mt-2">{members.length}</p>
+                  <span className="text-xs text-emerald-400 mt-1 block">Live database count</span>
                 </div>
-                <div className="grid grid-cols-2 gap-4 text-xs">
-                  <div><span className="text-slate-400">Gender:</span> <p className="text-white font-medium">{selectedMember.gender}</p></div>
-                  <div><span className="text-slate-400">Date of Birth:</span> <p className="text-white font-medium">{selectedMember.dob}</p></div>
-                  <div><span className="text-slate-400">Phone:</span> <p className="text-white font-medium">{selectedMember.phone || 'N/A'}</p></div>
-                  <div><span className="text-slate-400">Email:</span> <p className="text-white font-medium">{selectedMember.email || 'N/A'}</p></div>
-                  <div><span className="text-slate-400">Membership Type:</span> <p className="text-white font-medium">{selectedMember.membership_type}</p></div>
-                  <div><span className="text-slate-400">Holy Ghost Baptised:</span> <p className="text-white font-medium">{selectedMember.holy_ghost_baptism}</p></div>
-                  <div><span className="text-slate-400">Water Baptised:</span> <p className="text-white font-medium">{selectedMember.water_baptism}</p></div>
-                  <div><span className="text-slate-400">Ministry:</span> <p className="text-white font-medium">{selectedMember.ministry || 'General'}</p></div>
+
+                <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
+                  <span className="text-sm text-slate-400 font-medium">Presiding Elder</span>
+                  <p className="text-xl font-bold text-emerald-400 mt-2">{presidingElder.name}</p>
+                  <span className="text-xs text-slate-400 mt-1 block">{presidingElder.email}</span>
+                </div>
+
+                <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
+                  <span className="text-sm text-slate-400 font-medium">Total Contributions</span>
+                  <p className="text-3xl font-bold text-white mt-2">GH₵ {totalFinancesGhc}</p>
+                  <span className="text-xs text-slate-400 mt-1 block">{finances.length} records saved</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {currentTab === 'members' && (
+            <div className="space-y-6">
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                <div>
+                  <h2 className="text-2xl font-bold text-white">Membership Directory ({filteredMembers.length} Displayed)</h2>
+                  <p className="text-sm text-slate-400">Manage directory, crop photos, bulk import template, and filter data.</p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <button onClick={downloadCsv} className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-2 rounded-xl text-xs font-medium flex items-center space-x-2 shadow-lg">
+                    <Download className="w-4 h-4 text-emerald-400" /> <span>Export CSV</span>
+                  </button>
+
+                  <label className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-2 rounded-xl text-xs font-medium flex items-center space-x-2 cursor-pointer shadow-lg">
+                    <Upload className="w-4 h-4" /> <span>Bulk Import Template</span>
+                    <input type="file" accept=".csv, .xlsx" onChange={handleBulkImport} className="hidden" />
+                  </label>
+                </div>
+              </div>
+
+              {importStatus && <div className="bg-emerald-950/60 border border-emerald-800 text-emerald-300 p-3 rounded-xl text-xs">{importStatus}</div>}
+
+              {/* Filter Controls */}
+              <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4">
+                <div className="relative w-full md:w-72">
+                  <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
+                  <input type="text" placeholder="Search by name or phone..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-200" />
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                  <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200">
+                    <option value="All">All Categories</option>
+                    <option value="Officers">Officers</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Baptised">Water Baptised</option>
+                    <option value="HolyGhost">Holy Ghost Baptised</option>
+                  </select>
+
+                  <button onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')} className="bg-slate-950 border border-slate-800 px-3 py-2 rounded-xl text-xs text-slate-300 flex items-center space-x-1">
+                    <ArrowUpDown className="w-3.5 h-3.5 text-emerald-400" /> <span>Sort ({sortOrder.toUpperCase()})</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Registration Form */}
+              <form onSubmit={handleAddMember} className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+                <p className="text-xs font-semibold text-emerald-400 uppercase">Register Member (* Mandatory: First, Last Name, Gender, DOB)</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-3">
+                  <select value={newTitle} onChange={(e) => setNewTitle(e.target.value)} className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200">
+                    <option value="Brother">Brother</option><option value="Sister">Sister</option><option value="Elder">Elder</option><option value="Deacon">Deacon</option><option value="Deaconess">Deaconess</option><option value="Pastor">Pastor</option>
+                  </select>
+                  <input type="text" placeholder="First Name *" required value={newFirstName} onChange={(e) => setNewFirstName(e.target.value)} className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200" />
+                  <input type="text" placeholder="Middle Name" value={newMiddleName} onChange={(e) => setNewMiddleName(e.target.value)} className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200" />
+                  <input type="text" placeholder="Last Name *" required value={newLastName} onChange={(e) => setNewLastName(e.target.value)} className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200" />
+                  <select value={newGender} onChange={(e) => setNewGender(e.target.value)} className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200">
+                    <option value="Male">Male</option><option value="Female">Female</option>
+                  </select>
+                  <input type="text" placeholder="DOB (DD/MM/YYYY) *" required value={newDob} onChange={(e) => setNewDob(e.target.value)} className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200" />
+                </div>
+                <button type="submit" disabled={saving} className="bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-medium px-4 py-2 flex items-center space-x-2 shadow-lg">
+                  <Save className="w-4 h-4" /> <span>{saving ? 'Saving...' : 'Save Member Record'}</span>
+                </button>
+              </form>
+
+              {/* Members Table */}
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+                <table className="w-full text-left text-sm">
+                  <thead className="border-b border-slate-800 bg-slate-950 text-slate-400">
+                    <tr>
+                      <th className="p-4">Title</th><th className="p-4">Full Name</th><th className="p-4">Gender</th><th className="p-4">DOB</th><th className="p-4">Phone</th><th className="p-4 text-right">Details</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800">
+                    {filteredMembers.map(m => (
+                      <tr key={m.id} className="hover:bg-slate-800/40">
+                        <td className="p-4"><span className="px-2 py-1 bg-emerald-950 text-emerald-400 rounded-full text-xs border border-emerald-800">{m.title}</span></td>
+                        <td className="p-4 font-medium text-white">{m.first_name} {m.middle_name || ''} {m.last_name}</td>
+                        <td className="p-4 text-slate-300">{m.gender}</td>
+                        <td className="p-4 text-slate-300">{m.dob}</td>
+                        <td className="p-4 text-slate-400">{m.phone || 'N/A'}</td>
+                        <td className="p-4 text-right">
+                          <button onClick={() => setSelectedMember(m)} className="text-xs text-emerald-400 hover:underline flex items-center justify-end space-x-1">
+                            <Eye className="w-3.5 h-3.5" /> <span>View Full 64-Field Profile</span>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Full Record Modal */}
+              {selectedMember && (
+                <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                  <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-2xl w-full space-y-4 max-h-[85vh] overflow-y-auto shadow-2xl">
+                    <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+                      <h3 className="font-bold text-lg text-white">{selectedMember.title} {selectedMember.first_name} {selectedMember.last_name}</h3>
+                      <button onClick={() => setSelectedMember(null)} className="text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 text-xs">
+                      <div><span className="text-slate-400">Gender:</span> <p className="text-white font-medium">{selectedMember.gender}</p></div>
+                      <div><span className="text-slate-400">Date of Birth:</span> <p className="text-white font-medium">{selectedMember.dob}</p></div>
+                      <div><span className="text-slate-400">Phone:</span> <p className="text-white font-medium">{selectedMember.phone || 'N/A'}</p></div>
+                      <div><span className="text-slate-400">Email:</span> <p className="text-white font-medium">{selectedMember.email || 'N/A'}</p></div>
+                      <div><span className="text-slate-400">Membership Type:</span> <p className="text-white font-medium">{selectedMember.membership_type || 'Full Member'}</p></div>
+                      <div><span className="text-slate-400">Holy Ghost Baptised:</span> <p className="text-white font-medium">{selectedMember.holy_ghost_baptism || 'No'}</p></div>
+                      <div><span className="text-slate-400">Water Baptised:</span> <p className="text-white font-medium">{selectedMember.water_baptism || 'No'}</p></div>
+                      <div><span className="text-slate-400">Ministry:</span> <p className="text-white font-medium">{selectedMember.ministry || 'General'}</p></div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {currentTab === 'finance' && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold text-white">Finance & Tithes Ledger</h2>
+                  <p className="text-sm text-slate-400">Recorded transactions persist to Supabase.</p>
+                </div>
+                <button 
+                  onClick={async () => {
+                    const amount = parseFloat(prompt("Enter Contribution Amount (GH₵):") || "0");
+                    if (amount > 0) {
+                      const type = prompt("Type (Tithe / Offering / Special):") || "Tithe";
+                      const contributor = prompt("Contributor Name:") || "Anonymous";
+                      const newFin = { type, amount, contributor, date: new Date().toISOString().split('T')[0] };
+                      const { data } = await supabase.from('finances').insert([newFin]).select();
+                      if (data) setFinances([data[0], ...finances]);
+                    }
+                  }}
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-xs font-medium flex items-center space-x-2 shadow-lg"
+                >
+                  <Plus className="w-4 h-4" /> <span>Record Contribution</span>
+                </button>
+              </div>
+
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+                {finances.length === 0 ? (
+                  <p className="text-center text-slate-500 text-sm py-8">No financial transactions recorded yet.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {finances.map(f => (
+                      <div key={f.id} className="flex items-center justify-between p-4 bg-slate-950 border border-slate-800 rounded-xl">
+                        <div>
+                          <p className="font-semibold text-white">{f.type} — GH₵ {f.amount}</p>
+                          <p className="text-xs text-slate-400">Contributor: {f.contributor} • {f.date}</p>
+                        </div>
+                        <span className="text-xs bg-emerald-950 text-emerald-400 border border-emerald-800 px-3 py-1 rounded-full font-medium">Saved</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {currentTab === 'settings' && (
+            <div className="space-y-8 max-w-4xl">
+              <div>
+                <h2 className="text-2xl font-bold text-white">Control Panel: Presiding Elder & Branding</h2>
+                <p className="text-sm text-slate-400">Manage church credentials and branding.</p>
+              </div>
+
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+                <h3 className="text-lg font-semibold text-white">Presiding Elder Credentials</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-xs text-slate-400 mb-1">Presiding Elder Name</label>
+                    <input type="text" value={presidingElder.name} onChange={(e) => setPresidingElder({...presidingElder, name: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-200" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-slate-400 mb-1">Login Email</label>
+                    <input type="email" value={presidingElder.email} onChange={(e) => setPresidingElder({...presidingElder, email: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-200" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-slate-400 mb-1">Password</label>
+                    <input type="text" value={presidingElder.password} onChange={(e) => setPresidingElder({...presidingElder, password: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-200" />
+                  </div>
                 </div>
               </div>
             </div>
